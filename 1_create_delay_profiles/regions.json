@@ -1,0 +1,21 @@
+{
+    "Canada": {
+        "name": "Canada",
+        "code": "ca-central-1"
+    },
+    
+    "Sydney": {
+        "name": "Sydney",
+        "code": "ap-southeast-2"
+    },
+
+    "Tokyo": {
+        "name": "Tokyo",
+        "code": "ap-northeast-1"
+    },
+
+    "London": {
+        "name": "London",
+        "code": "eu-west-2"
+    }
+}

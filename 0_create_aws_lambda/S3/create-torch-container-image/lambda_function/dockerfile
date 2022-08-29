@@ -1,0 +1,26 @@
+FROM public.ecr.aws/lambda/python:3.8
+
+# Copy function code
+COPY app.py ${LAMBDA_TASK_ROOT}
+COPY vgg16.pt ${LAMBDA_TASK_ROOT}
+COPY cifar1000.pt ${LAMBDA_TASK_ROOT}
+# COPY cifar-10-batches-py ${LAMBDA_TASK_ROOT}/cifar-10-batches-py
+
+# Install the function's dependencies using file requirements.txt
+# from your project folder.
+
+# ARG TORCH_VERSION="1.11.0"
+# ARG C_PYTHON_VERSION="cp38"
+# ARG FLAGGED_C_PYTHON_VERSION="cp38"
+# ARG TORCH_WHEEL=https://download.pytorch.org/whl/cpu/torch-${TORCH_VERSION}%2Bcpu-${C_PYTHON_VERSION}-${FLAGGED_C_PYTHON_VERSION}-linux_x86_64.whl
+# ARG TORCHVISION_WHEEL=https://download.pytorch.org/whl/cpu/torchvision-${TORCHVISION_VERSION}%2Bcpu-${C_PYTHON_VERSION}-${FLAGGED_C_PYTHON_VERSION}-linux_x86_64.whl
+# RUN pip install \
+#     ${TORCH_WHEEL} \
+#     ${TORCHVISION_WHEEL} \
+#     --target "${LAMBDA_TASK_ROOT}"
+
+COPY requirements.txt  .
+RUN  pip3 install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
+
+# Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
+CMD [ "app.handler" ] 

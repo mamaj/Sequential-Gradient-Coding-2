@@ -1,0 +1,17 @@
+# VSCode
+.vscode
+
+# MacOS
+.DS_Store
+
+# Layer artifacts
+**/layers/*
+
+# Serverless
+**/.serverless/*
+**/node_modules/*
+
+# Terraform
+**/.terraform/*
+*.tfstate*
+**/build/*
