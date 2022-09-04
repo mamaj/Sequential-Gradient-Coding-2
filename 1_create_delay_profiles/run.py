@@ -13,9 +13,12 @@ from tqdm import tqdm, trange
 
 from utils import parse_log_duration, slugify
 
-REGIONS_FILE = Path(__file__).parent / 'regions.json'
-SAM_APP_NAME = 'sam-gc-vgg16'
 
+
+REGIONS_FILE = Path(__file__).parent / 'regions.json'
+
+# SAM_APP_NAME = 'sam-gc-vgg16'
+SAM_APP_NAME = 'sam-gc-cnn'
 
 
 def run(workers, invokes, load, batch, comp_type, region_name, folder, dryrun=False, suffix=None):
@@ -40,15 +43,9 @@ def run(workers, invokes, load, batch, comp_type, region_name, folder, dryrun=Fa
     """
 
     region = get_region_dict(region_name)
-
-    # event = {'size': size, 'batch': batch}
     event = {"load": load, "batch_size": batch, "comp_type": comp_type}
     
-    
-    if dryrun:
-        perform_dryrun(event, region)
-        if dryrun == 2: # perform only the dryrun
-            return     
+    perform_dryrun(event, region, dryrun)                
     
     rounds = []
     for i in trange(invokes):
@@ -69,13 +66,18 @@ def run(workers, invokes, load, batch, comp_type, region_name, folder, dryrun=Fa
         save(rounds, workers, invokes, event, region, folder, suffix=suffix)
         
         
-def perform_dryrun(dry_event, region):
-    print('Performing Dry Run: event = ', dry_event)
-    dry_result = task(-1, region, dry_event, dryrun=True)        
-    postprocess_task(dry_result, dryrun=True)
-    pprint(dry_result)
-    print()
-    return dry_result
+def perform_dryrun(dry_event, region, type_code=1):
+    if type_code == 1:
+        print('1 worker dry run: event = ', dry_event)
+        dry_result = task(-1, region, dry_event, dryrun=True)
+        postprocess_task(dry_result, dryrun=True)
+        pprint(dry_result)
+    
+    elif type_code == 2: # perform exponential warming
+        for w in (64, 128, 256):
+            print(f'{w} workers dry run...')
+            perform_round(w, region, {**dry_event, 'round': -1})
+    
     
     
 def perform_round(workers, region, event, num_process=None):
