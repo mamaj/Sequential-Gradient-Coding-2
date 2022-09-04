@@ -1,7 +1,0 @@
-{
-    "load": 0.2,
-    "batch_size": 256,
-    "comp_type": "no_forloop",
-    "worker_id": 123,
-    "round_num": -1
-}
