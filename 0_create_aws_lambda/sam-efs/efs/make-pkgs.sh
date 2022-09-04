@@ -100,7 +100,7 @@ then
     ${TORCH_WHEEL} \
     ${TORCHVISION_WHEEL} \
     ${TORCHAUDIO_WHEEL} \
-    -t $FOLDER || failure_cleanup
+    -t $FOLDER --no-cache-dir || failure_cleanup
 
 else
     echo "Building Python packages with Docker..."
