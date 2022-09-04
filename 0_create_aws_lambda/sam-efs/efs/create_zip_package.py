@@ -19,6 +19,8 @@ def create_package(
 ):
     
     package_dir = Path(package_dir)    
+    model_path = Path(model_path)
+    
     package_dir.mkdir(exist_ok=True)
 
     # pkgs
@@ -34,11 +36,24 @@ def create_package(
 
     sys.path.append(f'{package_dir/lab_dir}')
     import torch
+    import torch.nn as nn
     import torchvision
 
     # models
     (package_dir / model_path).parent.mkdir(exist_ok=True)
-    m = torchvision.models.vgg16(num_classes=num_classes)
+    
+    if model_path.stem == 'cnn': 
+        m = nn.Sequential(
+            nn.Conv2d(1, 8, 5), nn.ReLU(),
+            nn.Conv2d(8, 16, 5), nn.ReLU(),
+            nn.Conv2d(16, 4, 5), nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(1024, 256), nn.ReLU(),
+            nn.Linear(256, 10),
+        )
+    elif model_path.stem == 'vgg16':
+        m = torchvision.models.vgg16(num_classes=num_classes)
+        
     torch.save(m, package_dir / model_path)
 
     # datasets
@@ -63,7 +78,7 @@ def create_package(
 
     print('Created the EFS package.')
     
-
+    
     
 if __name__ == '__main__':
     
