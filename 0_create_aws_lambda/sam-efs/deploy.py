@@ -1,3 +1,4 @@
+import argparse
 import json
 import subprocess
 from pathlib import Path
@@ -7,37 +8,57 @@ import boto3
 from efs.create_zip_package import create_package
 from ssh_utils import SshClient
 
-# -------- PARAMETERS --------------------
 
-POPULATE_EFS = True
-UPLOAD_EFS_ZIP = False
 
-SAM_APP_NAME = 'sam-gc-vgg16'
+# ------------ ARGPARSE -------------------------------------------------
+parser = argparse.ArgumentParser()
+parser.add_argument('-r', '--region', type=str)
+args = parser.parse_args()
 
-# REGION = 'ca-central-1' # Canada
-# REGION = 'ap-southeast-2' # Sydney
-# REGION = 'eu-west-2' # London
-REGION = 'ap-northeast-1' # Tokyo
+regions = {
+    'Canada': 'ca-central-1',
+    'Sydney': 'ap-southeast-2',
+    'London': 'eu-west-2',
+    'Tokyo': 'ap-northeast-1',
+}
+REGION = regions[args.region]
 
-DATASET_NAME = 'CIFAR10'
+# ------------ PARAMETERS -------------------------------------------------
+
+POPULATE_EFS = False
+
+# SAM_APP_NAME = 'sam-gc-vgg16'
+# DATASET_NAME = 'CIFAR10'
+# MODEL_PATH = 'models/vgg16.pt'
+# NUM_CLASSES = 10
+# GRAD_COMMUNICATION = 'EFS'
+
+SAM_APP_NAME = 'sam-gc-cnn'
+DATASET_NAME = 'MNIST'
+MODEL_PATH = 'models/cnn.pt'
 NUM_CLASSES = 10
+GRAD_COMMUNICATION = 'Payload'
+
 PYTHON_VERSION = '3.8'
 
-# the directory information of the efs.zip. Will be env vars in lambda function:
-LOCAL_EFS_ZIP_PATH = './efs/efs.zip'
-MODEL_PATH = 'models/vgg16.pt' 
 DATASET_DIR = 'datasets'  
 RUNS_DIR = 'runs'
 LIB_DIR = 'pkgs'
-USE_DOCKER = False
 
 PUBLIC_KEY_FILE = Path.home() / '.ssh/id_rsa.pub'
 PRIVATE_KEY_FILE = Path.home() / '.ssh/id_rsa'
 
+# if local zip file
+UPLOAD_EFS_ZIP = False
+USE_DOCKER = False
+LOCAL_EFS_ZIP_PATH = './efs/efs.zip'
+
 
 session = boto3.Session(region_name=REGION)
 
-# --------- 1. Get default VPC and Subnets:
+
+
+# ------------ GET DEFAULT VPC AND SUBNETS ------------------------------
 
 ec2_client = session.client('ec2')
 
@@ -56,7 +77,8 @@ print(f'VPC ID: {vpc_id}')
 print(f'Subnet ID: {subnet_id}')
 
 
-# --------- 2. Build and Deploy the App from SAM Template
+
+# ------------  BUILD AND DEPLOY THE APP FROM SAM TEMPLATE ----------------
 
 # sam build
 subprocess.run(['sam', 'build'], check=True)
@@ -78,44 +100,46 @@ subprocess.run(
             f'RunsDir={RUNS_DIR}',
             f'DatasetDir={DATASET_DIR}',
             f'ModelPath={MODEL_PATH}',
+            f'GradCommunication={GRAD_COMMUNICATION}',
             f'PythonVersion=python{PYTHON_VERSION}',
             f'DatasetName={DATASET_NAME}',
             f'PublicKey="{PUBLIC_KEY}"',
+            f'Prefix={SAM_APP_NAME}',
     ],
     check=False
 )
 
 
-# --------- Get EC2 Instance for accessing EFS
 
-# get created stack resource
-stack = session.resource('cloudformation').Stack(SAM_APP_NAME)
-
-# start EC2 Instance
-ec2_id = stack.Resource('Ec2Instance').physical_resource_id
-instance = session.resource('ec2').Instance(ec2_id)
-instance.start()
-instance.wait_until_running()
-
-# get stack outputs
-stack.reload()
-outputs = stack.outputs
-# ec2_dns = [o['OutputValue'] for o in outputs if o['OutputKey']=='Ec2PublicDns'][0]
-ec2_dns = instance.public_dns_name
-efs_id = [o['OutputValue'] for o in outputs if o['OutputKey']=='EfsPublicDns'][0]
-efs_dns = f'{efs_id}.efs.{REGION}.amazonaws.com'
-lambda_arn = [o['OutputValue'] for o in outputs if o['OutputKey']=='FunctionArn'][0]
-
-
-
-print(f'{ec2_dns = }')
-print(f'{efs_dns = }')
-print(f'{lambda_arn = }')
-
-
-# --------- 3. populate EFS using EC2
+# ------------ GET EC2 / EFS / Lambda info ------------------------
 
 if POPULATE_EFS:
+
+    # get created stack resource
+    stack = session.resource('cloudformation').Stack(SAM_APP_NAME)
+
+    # start EC2 Instance
+    ec2_id = stack.Resource('Ec2Instance').physical_resource_id
+    instance = session.resource('ec2').Instance(ec2_id)
+    instance.start()
+    instance.wait_until_running()
+
+    # get stack outputs
+    stack.reload()
+    outputs = stack.outputs
+    # ec2_dns = [o['OutputValue'] for o in outputs if o['OutputKey']=='Ec2PublicDns'][0]
+    ec2_dns = instance.public_dns_name
+    efs_id = [o['OutputValue'] for o in outputs if o['OutputKey']=='EfsPublicDns'][0]
+    efs_dns = f'{efs_id}.efs.{REGION}.amazonaws.com'
+    lambda_arn = [o['OutputValue'] for o in outputs if o['OutputKey']=='FunctionArn'][0]
+
+
+    print(f'{ec2_dns = }')
+    print(f'{efs_dns = }')
+    print(f'{lambda_arn = }')
+
+
+# ------------  POPULATE EFS USING EC2 --------------------------------------
             
     # Run commands on EC2 instance:
     ssh = SshClient(user='ec2-user', remote=ec2_dns, key_path=PRIVATE_KEY_FILE)
@@ -131,10 +155,9 @@ if POPULATE_EFS:
         'mkdir -p ~/efs/lambda'], 
         check=False
     )
-
     
     if UPLOAD_EFS_ZIP:
-        # upload and unzip a local package
+    # upload and unzip a local package directly
             
         # create zip file if does not exisit
         LOCAL_EFS_ZIP_PATH = Path(LOCAL_EFS_ZIP_PATH)
@@ -165,7 +188,7 @@ if POPULATE_EFS:
         ])
     
     else:
-        # create the package on EC2 remotely.
+    # Create the package on EC2 remotely.
         
         # Copy EFS generator scripts
         print('Copying EFS generator scripts to EC2...')
@@ -173,11 +196,9 @@ if POPULATE_EFS:
             sources=['./efs/create_zip_package.py',
                      './efs/make-pkgs.sh'],
             destination='~'
-        )
-        # ssh.scp('./efs/create_zip_package.py', '~')
-        # ssh.scp('./efs/make-pkgs.sh', '~')
+        )        
         
-        
+        # Install python
         print(f"Installing python{PYTHON_VERSION}... on EC2")
         ssh.cmd([
             f'sudo amazon-linux-extras enable python{PYTHON_VERSION}',
@@ -198,16 +219,18 @@ if POPULATE_EFS:
              + f' --num-classes {NUM_CLASSES}')
         ])
 
+        print('Deployment Completed ;) ')
 
-    # Stop ec2 instance
+   # ------------- STOP EC2 ------------------------------------------------
+   
     ec2_id = stack.Resource('Ec2Instance').physical_resource_id
     instance = session.resource('ec2').Instance(ec2_id)
     instance.stop()
     print('ec2 instance stopped.')
 
 
-    print('Deployment Completed ;) ')
 
+    # ------------ TEST LAMBDA ---------------------------------------------
 
     # Dry Run Lambda Function
     print('performing lambda dry run:')
