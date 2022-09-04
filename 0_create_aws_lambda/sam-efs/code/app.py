@@ -14,6 +14,7 @@ import torchvision
 
 lambda_id = random.randint(1, 100000)
 
+GRAD_COMMUNICATION = os.getenv('GRAD_COMMUNICATION')
 MODEL_PATH = EFS + os.getenv('MODEL_PATH')
 RUNS_DIR = EFS + os.getenv('RUNS_DIR')
 DATASET_DIR = EFS + os.getenv('DATASET_DIR')
@@ -34,12 +35,18 @@ def load_model():
     return torch.load(MODEL_PATH)
 
 
-def save_grads(model, worker_id, round_num):
+def save_grads_efs(model, worker_id, round_num):
     grads = [p.grad.numpy().astype(np.float16) for p in model.parameters()]
     np.savez_compressed(Path(RUNS_DIR) / worker_id,
                         *grads,
                         round_num=round_num,
                         lambda_id=lambda_id)
+    return str(Path(RUNS_DIR) / worker_id)
+
+
+def grads_list(model):
+    grads = [p.grad.numpy().astype(np.float16).tolist() for p in model.parameters()]
+    return grads
 
 
 def lambda_handler(event, context):
@@ -56,7 +63,9 @@ def lambda_handler(event, context):
     
     
     # find number of points to take gradients    
-    n_points = round(load * batch_size)    
+    n_points = round(load * batch_size)
+    # n_points = n_points or 1
+    
     loader = torch.utils.data.DataLoader(dataset, batch_size=n_points)
     x_train, y_train = next(iter(loader))
 
@@ -80,14 +89,17 @@ def lambda_handler(event, context):
         loss.backward()
     
     
-    # save gradients to EFS:
-    save_grads(model, worker_id, round_number)
-    
-    return {
-        'statusCode': 200,
-        'body': {
-            **event,
-            'lambda_id': lambda_id,
-            'n_points': n_points,
-        }
-    } 
+    if GRAD_COMMUNICATION == 'EFS':
+        # save gradients to EFS:
+        grads = save_grads_efs(model, worker_id, round_number)
+        
+    elif GRAD_COMMUNICATION == 'Payload':
+        grads = grads_list(model)
+        
+        
+    return{
+        **event,
+        'lambda_id': lambda_id,
+        'n_points': n_points,
+        'grads': grads,
+    }
