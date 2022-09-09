@@ -25,6 +25,8 @@ regions = {
 REGION = regions[args.region]
 POPULATE_EFS = args.populate_efs
 
+session = boto3.Session(region_name=REGION)
+
 # ------------ PARAMETERS -------------------------------------------------
 
 # SAM_APP_NAME = 'sam-gc-vgg16'
@@ -49,9 +51,7 @@ LIB_DIR = 'pkgs'
 PUBLIC_KEY_FILE = Path.home() / '.ssh/id_rsa.pub'
 PRIVATE_KEY_FILE = Path.home() / '.ssh/id_rsa'
 
-
-session = boto3.Session(region_name=REGION)
-
+USE_LAYER = True
 
 # ------------ GET DEFAULT VPC AND SUBNETS ------------------------------
 
@@ -100,6 +100,7 @@ subprocess.run(
             f'DatasetName={DATASET_NAME}',
             f'PublicKey="{PUBLIC_KEY}"',
             f'Prefix={SAM_APP_NAME}',
+            f'UseLayer={"true" if USE_LAYER else "false"}',
     ],
     check=False
 )
@@ -112,22 +113,21 @@ if POPULATE_EFS:
 
     # get created stack resource
     stack = session.resource('cloudformation').Stack(SAM_APP_NAME)
+    
+    # EFS
+    efs_id = stack.Resource('FileSystem').physical_resource_id
+    efs_dns = f'{efs_id}.efs.{REGION}.amazonaws.com'
 
+    # Lambda
+    lambda_id = stack.Resource('LambdaFunction').physical_resource_id
+    lambda_arn = session.client('lambda').get_function(FunctionName=lambda_id)['Configuration']['FunctionArn']
+    
     # start EC2 Instance
     ec2_id = stack.Resource('Ec2Instance').physical_resource_id
     instance = session.resource('ec2').Instance(ec2_id)
     instance.start()
     instance.wait_until_running()
-
-    # get stack outputs
-    stack.reload()
-    outputs = stack.outputs
-    # ec2_dns = [o['OutputValue'] for o in outputs if o['OutputKey']=='Ec2PublicDns'][0]
     ec2_dns = instance.public_dns_name
-    efs_id = [o['OutputValue'] for o in outputs if o['OutputKey']=='EfsPublicDns'][0]
-    efs_dns = f'{efs_id}.efs.{REGION}.amazonaws.com'
-    lambda_arn = [o['OutputValue'] for o in outputs if o['OutputKey']=='FunctionArn'][0]
-
 
     print(f'{ec2_dns = }')
     print(f'{efs_dns = }')

@@ -36,6 +36,20 @@ Parameters:
   Prefix:
     Type: String
 
+  UseLayer:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+
+Conditions:
+  HasLayer: !Equals 
+    - !Ref UseLayer
+    - 'true'
+
+
 Resources:
   EfsSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -73,8 +87,8 @@ Resources:
   FileSystem:
     Type: 'AWS::EFS::FileSystem'
     Properties:
-      PerformanceMode: maxIO
-      # PerformanceMode: generalPurpose
+      PerformanceMode: generalPurpose
+      # PerformanceMode: maxIO
 
   AccessPoint:
     Type: 'AWS::EFS::AccessPoint'
@@ -101,11 +115,20 @@ Resources:
       SecurityGroups:
         - Ref: EfsSecurityGroup
 
+  TorchLayer:
+    Type: 'AWS::Serverless::LayerVersion'
+    Properties:
+      ContentUri: ./layer/pytorch.zip
+    # Condition: HasLayer
+
+
   LambdaFunction:
     Type: 'AWS::Serverless::Function'
     Properties:
       CodeUri: ./code
       Handler: app.lambda_handler
+      Layers:
+        - Ref: TorchLayer
       Runtime:
         Ref: PythonVersion
       Architectures:
@@ -120,6 +143,8 @@ Resources:
           LocalMountPath: /mnt/lambda
       Timeout: 200
       MemorySize: 2500
+      EphemeralStorage: 
+        Size: 2000
       Environment:
         Variables:
           MODEL_PATH:
@@ -131,7 +156,9 @@ Resources:
           DATASET_NAME:
             Ref: DatasetName
           GRAD_COMMUNICATION:
-           Ref: GradCommunication
+            Ref: GradCommunication
+          USE_LAYER:
+            Ref: UseLayer
 
       Policies:
         - EFSWriteAccessPolicy:
@@ -139,7 +166,7 @@ Resources:
               Ref: FileSystem
             AccessPoint: 
               Ref: AccessPoint
-    DependsOn: "MountTarget1"
+    DependsOn: MountTarget1
 
   KeyPairEc2:
     Type: 'AWS::EC2::KeyPair'

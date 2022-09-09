@@ -4,7 +4,11 @@ import sys
 from pathlib import Path
 
 EFS = '/mnt/lambda/'
-sys.path.append(EFS + 'pkgs')
+
+if os.getenv('USE_LAYER'):
+    import unzip_requirements
+else:
+    sys.path.append(EFS + 'pkgs')
     
 import numpy as np
 import torch
