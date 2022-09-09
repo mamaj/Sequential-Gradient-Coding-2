@@ -6,3 +6,4 @@ venv
 *.zip
 *.pt
 site-packages
+sam-cnn_profile_est
