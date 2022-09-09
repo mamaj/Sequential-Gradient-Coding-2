@@ -95,8 +95,9 @@ if [[ $USE_DOCKER == no ]]
 then
     
     echo "Building Python packages ..."
-    
-    pip$PYTHON_VERSION install \
+    python$PYTHON_VERSION -m pip install --upgrade pip
+
+    python$PYTHON_VERSION -m pip install \
     ${TORCH_WHEEL} \
     ${TORCHVISION_WHEEL} \
     ${TORCHAUDIO_WHEEL} \

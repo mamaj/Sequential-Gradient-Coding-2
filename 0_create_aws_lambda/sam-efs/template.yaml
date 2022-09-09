@@ -73,7 +73,8 @@ Resources:
   FileSystem:
     Type: 'AWS::EFS::FileSystem'
     Properties:
-      PerformanceMode: generalPurpose
+      PerformanceMode: maxIO
+      # PerformanceMode: generalPurpose
 
   AccessPoint:
     Type: 'AWS::EFS::AccessPoint'

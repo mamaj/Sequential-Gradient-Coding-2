@@ -27,7 +27,7 @@ for name, f in vars(torchvision.models).items():
 from cnn_mnist import CnnModel
 model = CnnModel()
 num_params = sum(p.numel() for p in model.parameters())
-print(f'simple cnn: {num_params=:,}, size={num_params * 16 / 8:,} B')
+print(f'simple cnn: {num_params=:,}, size (float16) = {num_params * 16 / 8:,} B')
 
 
 #%% load a model:
