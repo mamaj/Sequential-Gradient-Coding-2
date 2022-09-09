@@ -39,6 +39,7 @@ MODEL_PATH = 'models/cnn.pt'
 NUM_CLASSES = 10
 GRAD_COMMUNICATION = 'Payload'
 
+
 PYTHON_VERSION = '3.8'
 
 DATASET_DIR = 'datasets'  
@@ -48,14 +49,8 @@ LIB_DIR = 'pkgs'
 PUBLIC_KEY_FILE = Path.home() / '.ssh/id_rsa.pub'
 PRIVATE_KEY_FILE = Path.home() / '.ssh/id_rsa'
 
-# if local zip file
-UPLOAD_EFS_ZIP = False
-USE_DOCKER = False
-LOCAL_EFS_ZIP_PATH = './efs/efs.zip'
-
 
 session = boto3.Session(region_name=REGION)
-
 
 
 # ------------ GET DEFAULT VPC AND SUBNETS ------------------------------
@@ -111,9 +106,9 @@ subprocess.run(
 
 
 
-# ------------ GET EC2 / EFS / Lambda info ------------------------
-
 if POPULATE_EFS:
+
+# ------------ GET EC2 / EFS / Lambda info ------------------------
 
     # get created stack resource
     stack = session.resource('cloudformation').Stack(SAM_APP_NAME)
@@ -155,71 +150,40 @@ if POPULATE_EFS:
         'mkdir -p ~/efs/lambda'], 
         check=False
     )
-    
-    if UPLOAD_EFS_ZIP:
-    # upload and unzip a local package directly
-            
-        # create zip file if does not exisit
-        LOCAL_EFS_ZIP_PATH = Path(LOCAL_EFS_ZIP_PATH)
-        if not LOCAL_EFS_ZIP_PATH.exists():
-            create_package(
-                python_version=f'python{PYTHON_VERSION}',
-                package_dir=LOCAL_EFS_ZIP_PATH.parent,
-                lab_dir=LIB_DIR,
-                model_path=MODEL_PATH,
-                dataset_dir=DATASET_DIR,
-                runs_dir=RUNS_DIR,
-                efs_zip_name=LOCAL_EFS_ZIP_PATH.name,
-                dataset_name=DATASET_NAME,
-                num_classes=NUM_CLASSES,
-                use_docker=USE_DOCKER,
-            )
-        
-        # Copy zip file to EFS
-        print('Copying the zip package to EFS...')
-        ssh.scp(LOCAL_EFS_ZIP_PATH, '~/efs/lambda')
 
-        # Unzip and delete zip file
-        print('Unzipping EFS package...')
-        ssh.cmd([
-            'unzip ~/efs/lambda/efs.zip -d ~/efs/lambda',
-            'rm ~/efs/lambda/efs.zip',
-            'echo done.'
-        ])
-    
-    else:
+
     # Create the package on EC2 remotely.
-        
-        # Copy EFS generator scripts
-        print('Copying EFS generator scripts to EC2...')
-        ssh.scp(
-            sources=['./efs/create_zip_package.py',
-                     './efs/make-pkgs.sh'],
-            destination='~'
-        )        
-        
-        # Install python
-        print(f"Installing python{PYTHON_VERSION}... on EC2")
-        ssh.cmd([
-            f'sudo amazon-linux-extras enable python{PYTHON_VERSION}',
-            f'sudo yum install -y python{PYTHON_VERSION}'
-        ])
-        
-        # RUN EFS generator scripts
-        ssh.cmd([
-            (  f'python{PYTHON_VERSION} ~/create_zip_package.py'
-             + f' --python-version {PYTHON_VERSION}'
-             + f' --package-dir {"efs/lambda"}'
-             + f' --lab-dir {LIB_DIR}'
-             + f' --model-path {MODEL_PATH}'
-             + f' --dataset-dir {DATASET_DIR}'
-             + f' --runs-dir {RUNS_DIR}'
-             + f' --efs-zip-name {"na"}'
-             + f' --dataset-name {DATASET_NAME}'
-             + f' --num-classes {NUM_CLASSES}')
-        ])
+    
+    # Copy EFS generator scripts
+    print('Copying EFS generator scripts to EC2...')
+    ssh.scp(
+        sources=['./efs/create_zip_package.py',
+                    './efs/make-pkgs.sh'],
+        destination='~'
+    )        
+    
+    # Install python
+    print(f"Installing python{PYTHON_VERSION}... on EC2")
+    ssh.cmd([
+        f'sudo amazon-linux-extras enable python{PYTHON_VERSION}',
+        f'sudo yum install -y python{PYTHON_VERSION}'
+    ])
+    
+    # RUN EFS generator scripts
+    ssh.cmd([
+        (  f'python{PYTHON_VERSION} ~/create_zip_package.py'
+            + f' --python-version {PYTHON_VERSION}'
+            + f' --package-dir {"efs/lambda"}'
+            + f' --lab-dir {LIB_DIR}'
+            + f' --model-path {MODEL_PATH}'
+            + f' --dataset-dir {DATASET_DIR}'
+            + f' --runs-dir {RUNS_DIR}'
+            + f' --efs-zip-name {"na"}'
+            + f' --dataset-name {DATASET_NAME}'
+            + f' --num-classes {NUM_CLASSES}')
+    ])
 
-        print('Deployment Completed ;) ')
+    print('Deployment Completed ;) ')
 
    # ------------- STOP EC2 ------------------------------------------------
    
