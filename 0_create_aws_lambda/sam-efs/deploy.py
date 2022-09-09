@@ -12,7 +12,8 @@ from ssh_utils import SshClient
 
 # ------------ ARGPARSE -------------------------------------------------
 parser = argparse.ArgumentParser()
-parser.add_argument('-r', '--region', type=str)
+parser.add_argument('-r', '--region', type=str, required=True)
+parser.add_argument('-p', '--populate-efs', action='store_true', default=False)
 args = parser.parse_args()
 
 regions = {
@@ -22,10 +23,9 @@ regions = {
     'Tokyo': 'ap-northeast-1',
 }
 REGION = regions[args.region]
+POPULATE_EFS = args.populate_efs
 
 # ------------ PARAMETERS -------------------------------------------------
-
-POPULATE_EFS = False
 
 # SAM_APP_NAME = 'sam-gc-vgg16'
 # DATASET_NAME = 'CIFAR10'
