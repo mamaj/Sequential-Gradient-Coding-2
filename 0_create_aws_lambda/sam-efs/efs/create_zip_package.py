@@ -54,6 +54,9 @@ def create_package(
     elif model_path.stem == 'vgg16':
         m = torchvision.models.vgg16(num_classes=num_classes)
         
+    elif model_path.stem == 'resnet18':
+        m = torchvision.models.resnet18(num_classes=num_classes)
+        
     torch.save(m, package_dir / model_path)
 
     # datasets
