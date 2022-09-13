@@ -167,12 +167,13 @@ def postprocess_task(w, dryrun=False, remove_grads=True):
     
     if payload := w.get('payload'):
         w['payload'] = json.loads(payload.decode())
-        if remove_grads:
-            grads = payload['grads']
-            payload['grads'] = {
-                'type': type(grads),
-                'len': len(grads),
-            }
+        
+    if remove_grads:
+        grads = w['payload']['grads']
+        w['payload']['grads'] = {
+            'type': type(grads),
+            'len': len(grads),
+        }
         
     if dryrun:    
         w['HTTPStatusCode'] = w['response']['ResponseMetadata']['HTTPStatusCode']
