@@ -2,7 +2,7 @@ import json
 import pickle
 import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-from itertools import product, repeat
+from itertools import repeat
 from multiprocessing import cpu_count
 from pathlib import Path
 from pprint import pprint
@@ -14,14 +14,18 @@ from tqdm import tqdm, trange
 from utils import parse_log_duration, slugify
 
 
-
-REGIONS_FILE = Path(__file__).parent / 'regions.json'
-
 # SAM_APP_NAME = 'sam-gc-vgg16'
-SAM_APP_NAME = 'sam-gc-cnn'
+# SAM_APP_NAME = 'sam-gc-resnet18'
+# SAM_APP_NAME = 'sam-gc-cnn'
 
+REGIONS = {
+    "Canada": "ca-central-1",
+    "Sydney": "ap-southeast-2",
+    "Tokyo": "ap-northeast-1",
+    "London": "eu-west-2",
+}
 
-def run(workers, invokes, load, batch, comp_type, region_name, folder, dryrun=False, suffix=None):
+def run(workers, invokes, load, batch, comp_type, region_name, sam_name, folder, dryrun=False, suffix=None):
     """ Returns list of round dicts:
     list(
         {
@@ -42,10 +46,10 @@ def run(workers, invokes, load, batch, comp_type, region_name, folder, dryrun=Fa
     )
     """
 
-    region = get_region_dict(region_name)
+    region = get_region_dict(region_name, sam_name)
     event = {"load": load, "batch_size": batch, "comp_type": comp_type}
     
-    perform_dryrun(event, region, dryrun)                
+    perform_dryrun(workers, event, region, dryrun)                
     
     rounds = []
     for i in trange(invokes):
@@ -63,17 +67,21 @@ def run(workers, invokes, load, batch, comp_type, region_name, folder, dryrun=Fa
             # save(rounds, workers, invokes, event, region, folder, suffix=f'temp{i}') 
     
     if folder is not None:
-        save(rounds, workers, invokes, event, region, folder, suffix=suffix)
+        save(rounds, workers, invokes, event, region, folder, sam_name, suffix=suffix)
         
         
-def perform_dryrun(dry_event, region, type_code=1):
+def perform_dryrun(workers, dry_event, region, type_code=1):
     if type_code == 1:
         print('1 worker dry run: event = ', dry_event)
-        dry_result = task(-1, region, dry_event, dryrun=True)
+        dry_result = task(-1, region, dry_event)
         postprocess_task(dry_result, dryrun=True)
         pprint(dry_result)
     
-    elif type_code == 2: # perform exponential warming
+    elif type_code == 2:
+        print(f'{workers} workers dry run...')
+        perform_round(workers, region, {**dry_event, 'round': -1})
+            
+    elif type_code == 3: # perform exponential warming
         for w in (64, 128, 256):
             print(f'{w} workers dry run...')
             perform_round(w, region, {**dry_event, 'round': -1})
@@ -108,17 +116,14 @@ def task_process(worker_ids, region, event):
 
 
 
-def task(worker_id, region, event, dryrun=False):    
+def task(worker_id, region, event):    
     session = boto3.session.Session()
     client = session.client('lambda', region_name=region['code'])    
     
     started = time.perf_counter()
-    response = invoke_lambda(client, region.get('arn'), 
+    response = invoke_lambda(client, region['arn'], 
                              {**event, 'worker_id': int(worker_id)})
     finished = time.perf_counter()
-    
-    # if not dryrun:
-        # del response['Payload']
     
     payload = response['Payload'].read()
     del response['Payload']
@@ -148,7 +153,7 @@ def postprocess_round(worker_results):
         postprocess_task(w)
         
 
-def postprocess_task(w, dryrun=False):
+def postprocess_task(w, dryrun=False, remove_grads=True):
     # response = w['response']
     # if payload := response.get('Payload'):
         # w['payload'] = json.loads(payload.read().decode())
@@ -162,6 +167,12 @@ def postprocess_task(w, dryrun=False):
     
     if payload := w.get('payload'):
         w['payload'] = json.loads(payload.decode())
+        if remove_grads:
+            grads = payload['grads']
+            payload['grads'] = {
+                'type': type(grads),
+                'len': len(grads),
+            }
         
     if dryrun:    
         w['HTTPStatusCode'] = w['response']['ResponseMetadata']['HTTPStatusCode']
@@ -170,13 +181,13 @@ def postprocess_task(w, dryrun=False):
     
 
 
-def save(results, workers, invokes, event, region, folder, suffix=None):
+def save(results, workers, invokes, event, region, folder, sam_name, suffix=None):
     if suffix is None:
         suffix = ''
     else:
         suffix = '_' + str(suffix)
         
-    exp_folder = Path(folder)
+    exp_folder = Path(sam_name + '_' + folder)
     if not exp_folder.is_dir():
         exp_folder.mkdir(parents=True, exist_ok=True)
     
@@ -191,11 +202,14 @@ def save(results, workers, invokes, event, region, folder, suffix=None):
         pickle.dump(results, f)
     
     
-def get_region_dict(region_name):
-    with open(REGIONS_FILE) as f:
-        REGIONS = json.load(f)
-    region = REGIONS[region_name]
-    stack = boto3.resource('cloudformation', region_name=region['code']).Stack(SAM_APP_NAME)
-    lambda_arn = [o['OutputValue'] for o in stack.outputs if o['OutputKey']=='FunctionArn'][0]
-    region['arn'] = lambda_arn
-    return region
+def get_region_dict(region_name, sam_name):
+    region_code = REGIONS[region_name]
+    session = boto3.Session(region_name=region_code)
+    stack = session.resource('cloudformation').Stack(sam_name)
+    lambda_id = stack.Resource('LambdaFunction').physical_resource_id
+    lambda_arn = session.client('lambda').get_function(FunctionName=lambda_id)['Configuration']['FunctionArn']
+    return {
+        'name': region_name,
+        'code': region_code,
+        'arn': lambda_arn
+    }
