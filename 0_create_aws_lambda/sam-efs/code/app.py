@@ -1,14 +1,20 @@
+from ast import Raise
 import os
 import random
 import sys
 from pathlib import Path
 
 EFS = '/mnt/lambda/'
+USE_LAYER = os.getenv('USE_LAYER')
 
-if os.getenv('USE_LAYER'):
+
+if USE_LAYER == 'true':
     import unzip_requirements
-else:
+elif USE_LAYER == 'false':
     sys.path.append(EFS + 'pkgs')
+else:
+    raise ValueError(f'Invalid USE_LAYER: {USE_LAYER}')
+    
     
 import numpy as np
 import torch
@@ -54,6 +60,15 @@ def grads_list(model):
 
 
 def lambda_handler(event, context):
+    """
+    event is expected to have 
+        - batch_size
+        - load
+        - comp_type
+        - worker_id (opt)
+        - round
+    """
+    
     # read model from EFS
     model = load_model()
     
@@ -63,12 +78,21 @@ def lambda_handler(event, context):
     comp_type = event['comp_type']
     
     worker_id = str(event.get('worker_id', 'na'))
-    round_number = event.get('round', 0)
+    round_number = event.get('round', -1)
     
     
     # find number of points to take gradients    
     n_points = round(load * batch_size)
-    # n_points = n_points or 1
+    n_points = n_points or 1
+    
+    if n_points == 0:
+        return { 
+            **event,
+            'lambda_id': lambda_id,
+            'n_points': n_points,
+            'grads': []
+        }
+    
     
     loader = torch.utils.data.DataLoader(dataset, batch_size=n_points)
     x_train, y_train = next(iter(loader))
@@ -81,7 +105,9 @@ def lambda_handler(event, context):
     elif comp_type == 'forloop':
         x_train = x_train.unsqueeze(dim=1)
         y_train = y_train.unsqueeze(dim=1)
-        
+    
+    else:
+        raise ValueError(f'comp_type is not valid: {comp_type}')
     
     # calculate gradients
     for x, y in zip(x_train, y_train):
@@ -99,9 +125,12 @@ def lambda_handler(event, context):
         
     elif GRAD_COMMUNICATION == 'Payload':
         grads = grads_list(model)
+    
+    else:
+        raise ValueError(f'GRAD_COMMUNICATION env variable not valid: {GRAD_COMMUNICATION}')
+
         
-        
-    return{
+    return {
         **event,
         'lambda_id': lambda_id,
         'n_points': n_points,
