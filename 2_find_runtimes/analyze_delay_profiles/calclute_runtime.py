@@ -11,7 +11,7 @@ import argparse
 from gradient_coding import GradientCoding
 from multiplexed_sgc import MultiplexedSGC
 from selective_repeat_sgc import SelectiveRepeatSGC
-from utils import get_durations, load_windows_exp, load_prfile, slugify
+from utils import get_durations, load_windows_exp, load_profile, slugify
 
 
 parser = argparse.ArgumentParser()
@@ -62,9 +62,9 @@ ncpus = ncpus or cpu_count()
 #     folder=folder,
 # )
 
-run_results = load_prfile(
-    nworkers=workers,
-    ninvokes=ninvokes,
+run_results = load_profile(
+    workers=workers,
+    invokes=ninvokes,
     load=load,
     batch=batch,
     comp_type=comp_type,

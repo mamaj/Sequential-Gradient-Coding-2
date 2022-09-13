@@ -42,8 +42,8 @@ def find_durations(n, s, rounds, mu, folder):
         dur = {'s': s}
 
         run_results = load_windows_exp(
-            nworkers=n,
-            ninvokes=300,
+            workers=n,
+            invokes=300,
             size=500,
             # batch=s, # this can be s to simulate normalized load 
             batch=1,

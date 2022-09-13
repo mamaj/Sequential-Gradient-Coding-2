@@ -41,8 +41,8 @@ for p in Path(f'./{folder}_runtimes').glob(f'{folder}_{region}_mu{mu_str}_w{work
 
 
 run_results = load_windows_exp(
-    nworkers=workers,
-    ninvokes=ninvokes,
+    workers=workers,
+    invokes=ninvokes,
     size=size,
     batch=1,
     region=region,

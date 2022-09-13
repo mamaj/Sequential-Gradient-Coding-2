@@ -10,7 +10,7 @@ from IPython.display import display
 from gradient_coding import GradientCoding
 from multiplexed_sgc import MultiplexedSGC
 from selective_repeat_sgc import SelectiveRepeatSGC
-from utils import get_durations, load_prfile, slugify
+from utils import get_durations, load_profile, slugify
 
 
 models = {
@@ -45,9 +45,9 @@ for p in Path(f'./{folder}_runtimes2/').glob(f'{folder}-{region}-mu{slugify(mu)}
     runtimes.append(result)
 
 
-run_results = load_prfile(
-    nworkers=workers,
-    ninvokes=ninvokes,
+run_results = load_profile(
+    workers=workers,
+    invokes=ninvokes,
     load=profile_load,
     batch=batch,
     comp_type='no_forloop',

@@ -30,8 +30,8 @@ models = [
 
 # load a delay profile
 rounds = load_windows_exp(
-    nworkers=100,
-    ninvokes=100,
+    workers=100,
+    invokes=100,
     size=1000,
     region='Tokyo',
     batch=None,

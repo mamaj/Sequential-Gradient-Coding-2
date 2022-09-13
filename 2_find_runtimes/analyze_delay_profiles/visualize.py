@@ -47,8 +47,8 @@ with open('./results/batch_numpy6_Tokyo_mu0-01.pkl', 'rb') as f:
     durations = pickle.load(f)
 
 run_results = load_windows_exp(
-    nworkers=n,
-    ninvokes=300,
+    workers=n,
+    invokes=300,
     size=500,
     batch=s,
     region='Tokyo',

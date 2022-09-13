@@ -18,13 +18,13 @@ def parse_log_duration(log):
     return float(duration)
 
 
-def load_windows_exp(nworkers, ninvokes, size, batch, region,
+def load_windows_exp(workers, invokes, size, batch, region,
                      folder, complete_response=False):
     
     exp_folder = Path(folder)
-    fname = f"w{nworkers}-n{ninvokes}-s{size}-b{batch}-{region}"
+    fname = f"w{workers}-n{invokes}-s{size}-b{batch}-{region}"
     if batch is None:
-        fname = f"w{nworkers}-n{ninvokes}-s{size}-{region}"
+        fname = f"w{workers}-n{invokes}-s{size}-{region}"
     fpath = (exp_folder / fname).with_suffix('.pkl')
 
 
@@ -34,15 +34,15 @@ def load_windows_exp(nworkers, ninvokes, size, batch, region,
     if not complete_response:
         for r in rounds:
             for res in r['results']:
-                del res['response']
+                del res['payload']
     return rounds
 
 
-def load_prfile(nworkers, ninvokes, load, batch, comp_type, region,
+def load_profile(workers, invokes, load, batch, comp_type, region,
                      folder, complete_response=False):
     
     exp_folder = Path(folder)
-    fname = f"w{nworkers}-n{ninvokes}-l{slugify(load)}-b{batch}-c{slugify(comp_type)}-{region}"
+    fname = f"w{workers}-n{invokes}-l{slugify(load)}-b{batch}-c{slugify(comp_type)}-{region}"
     fpath = (exp_folder / fname).with_suffix('.pkl')
 
     with open(fpath, 'rb') as f:
