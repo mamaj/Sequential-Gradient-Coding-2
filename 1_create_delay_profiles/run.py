@@ -55,7 +55,7 @@ def run(workers, invokes, load, batch, comp_type, region_name, sam_name, folder,
     for i in trange(invokes):
         worker_results, started, finished = perform_round(workers, region,
                                                           {**event, 'round': i})
-        postprocess_round(worker_results)
+        # postprocess_round(worker_results)
         rounds.append({
             'round': i,
             'started': started,
@@ -74,7 +74,7 @@ def perform_dryrun(workers, dry_event, region, type_code=1):
     if type_code == 1:
         print('1 worker dry run: event = ', dry_event)
         dry_result = task(-1, region, dry_event)
-        postprocess_task(dry_result, dryrun=True)
+        # postprocess_task(dry_result, dryrun=True)
         pprint(dry_result)
     
     elif type_code == 2:
@@ -125,14 +125,16 @@ def task(worker_id, region, event):
                              {**event, 'worker_id': int(worker_id)})
     finished = time.perf_counter()
     
-    payload = response['Payload'].read()
+    # NOTE: throwing away payload
+    # payload = response['Payload'].read()
+    payload = 'removed'
     del response['Payload']
     
     return {'worker_id': worker_id,
             'started': started,
             'finished': finished,
             'response': response,
-            'payload': payload
+            'payload': payload,
             }
 
 
