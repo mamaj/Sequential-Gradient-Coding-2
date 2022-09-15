@@ -92,7 +92,8 @@ if __name__ == '__main__':
 
 # ------------------------ SAVE RESULTS ------------------------
 
-    folder_name = DELAY_DIR / (folder + '_runtimes')
+    folder_name = DELAY_DIR / f'{folder}_runtimes'
+    
     file_name = f'{region_name}-mu{slugify(mu)}-w{workers}-n{invokes}-l{slugify(base_load)}-b{batch}-{model_name}'
 
     folder_name.mkdir(exist_ok=True)

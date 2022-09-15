@@ -191,7 +191,7 @@ def save(results, workers, invokes, event, region, folder, sam_name, suffix=None
     else:
         suffix = '_' + str(suffix)
         
-    exp_folder = Path(sam_name + '_' + folder)
+    exp_folder = DELAY_DIR / f'{sam_name}_{folder}'
     if not exp_folder.is_dir():
         exp_folder.mkdir(parents=True, exist_ok=True)
     
@@ -200,7 +200,7 @@ def save(results, workers, invokes, event, region, folder, sam_name, suffix=None
     event_str = '-'.join(event_str)
     
     fname = f"w{workers}-n{invokes}-{event_str}-{region['name']}{suffix}"
-    fpath = (DELAY_DIR / exp_folder / fname).with_suffix('.pkl')
+    fpath = (exp_folder / fname).with_suffix('.pkl')
     
     with open(fpath, 'wb') as f:
         pickle.dump(results, f)

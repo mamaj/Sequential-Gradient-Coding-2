@@ -15,16 +15,18 @@ DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 #%% --------------- PARAMETERS ---------------------------------------------
 
 # folder = 'sam-gc-cnn_profile_est_desktop4'
-folder = 'sam-gc-resnet18_profile_est_mbp'
+# folder = 'sam-gc-resnet18_profile_est_mbp'
+folder = 'sam-gc-resnet18_profile_est_desktop'
 
 
 # parameters
 # regions = ['Canada', 'London', 'Tokyo', 'Sydney']
 regions = ['Canada']
 loads = np.arange(0, 1.25, 0.25)
+loads = [0.0, 0.02, 0.25, 0.5, 0.75, 1.0]
 
 workers = 256
-invokes = 20
+invokes = 25
 batch = 256
 comp_type = 'no_forloop'
 
@@ -85,7 +87,8 @@ for region in regions:
 
 #%% --------------- SAVE BASE_COMP -----------------------------------
 
-with open(Path(DELAY_DIR / folder) / 'base_comp.pkl', 'wb') as f:
+fpath = DELAY_DIR / folder / 'base_comp.pkl'
+with open(fpath, 'wb') as f:
     pickle.dump(base_comp, f)
     
 
