@@ -31,4 +31,4 @@ python main.py \
 -s sam-gc-cnn \
 -d 2
 
-python main.py -n 1 -w 256 -b 256 -l 0.25 -c no_forloop -r Canada -f profile_est_mbp -s sam-gc-cnn
+python main.py -n 20 -w 256 -b 256 -l 0 0.25 0.5 0.75 1.0 -c no_forloop -r Canada -f profile_est_mbp -s sam-gc-resnet18 -d 2

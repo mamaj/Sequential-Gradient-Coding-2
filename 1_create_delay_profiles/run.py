@@ -24,6 +24,7 @@ REGIONS = {
     "Tokyo": "ap-northeast-1",
     "London": "eu-west-2",
 }
+DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 
 def run(workers, invokes, load, batch, comp_type, region_name, sam_name, folder, dryrun=False, suffix=None):
     """ Returns list of round dicts:
@@ -199,7 +200,7 @@ def save(results, workers, invokes, event, region, folder, sam_name, suffix=None
     event_str = '-'.join(event_str)
     
     fname = f"w{workers}-n{invokes}-{event_str}-{region['name']}{suffix}"
-    fpath = (exp_folder / fname).with_suffix('.pkl')
+    fpath = (DELAY_DIR / exp_folder / fname).with_suffix('.pkl')
     
     with open(fpath, 'wb') as f:
         pickle.dump(results, f)

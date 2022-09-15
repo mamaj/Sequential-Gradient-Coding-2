@@ -16,7 +16,8 @@ class SelectiveRepeatSGC:
         # parameters
         self.s = math.ceil((B * lambd) / (W - 1 + B))
         self.load = self.normalized_load(n, self.s)
-        self.total_rounds = rounds + B
+        self.T = B
+        self.total_rounds = rounds + self.T
         
         # delay profile
         assert delays.shape[1] >= self.total_rounds,\

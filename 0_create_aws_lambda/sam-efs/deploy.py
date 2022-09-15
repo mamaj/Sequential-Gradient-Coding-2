@@ -35,17 +35,17 @@ session = boto3.Session(region_name=REGION)
 # NUM_CLASSES = 10
 # GRAD_COMMUNICATION = 'EFS'
 
-# SAM_APP_NAME = 'sam-gc-resnet18'
-# DATASET_NAME = 'CIFAR10'
-# MODEL_PATH = 'models/resnet18.pt'
-# NUM_CLASSES = 10
-# GRAD_COMMUNICATION = 'EFS'
-
-SAM_APP_NAME = 'sam-gc-cnn'
-DATASET_NAME = 'MNIST'
-MODEL_PATH = 'models/cnn.pt'
+SAM_APP_NAME = 'sam-gc-resnet18'
+DATASET_NAME = 'CIFAR10'
+MODEL_PATH = 'models/resnet18.pt'
 NUM_CLASSES = 10
-GRAD_COMMUNICATION = 'Payload'
+GRAD_COMMUNICATION = 'EFS'
+
+# SAM_APP_NAME = 'sam-gc-cnn'
+# DATASET_NAME = 'MNIST'
+# MODEL_PATH = 'models/cnn.pt'
+# NUM_CLASSES = 10
+# GRAD_COMMUNICATION = 'Payload'
 
 
 PYTHON_VERSION = '3.8'
