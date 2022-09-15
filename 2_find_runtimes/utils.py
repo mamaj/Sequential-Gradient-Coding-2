@@ -10,40 +10,14 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-def parse_log_duration(log):
-    log = base64.b64decode(log).decode('utf-8')
-    
-    pattern = 'Duration: ([0-9.]*) ms'
-    duration = re.search(pattern, log).group(1)
-    return float(duration)
-
-
-def load_windows_exp(workers, invokes, size, batch, region,
-                     folder, complete_response=False):
-    
-    exp_folder = Path(folder)
-    fname = f"w{workers}-n{invokes}-s{size}-b{batch}-{region}"
-    if batch is None:
-        fname = f"w{workers}-n{invokes}-s{size}-{region}"
-    fpath = (exp_folder / fname).with_suffix('.pkl')
-
-
-    with open(fpath, 'rb') as f:
-        rounds = pickle.load(f)
-        
-    if not complete_response:
-        for r in rounds:
-            for res in r['results']:
-                del res['payload']
-    return rounds
-
 
 def load_profile(workers, invokes, load, batch, comp_type, region,
                      folder, complete_response=False):
     
+    DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
     exp_folder = Path(folder)
     fname = f"w{workers}-n{invokes}-l{slugify(load)}-b{batch}-c{slugify(comp_type)}-{region}"
-    fpath = (exp_folder / fname).with_suffix('.pkl')
+    fpath = (DELAY_DIR / exp_folder / fname).with_suffix('.pkl')
 
     with open(fpath, 'rb') as f:
         rounds = pickle.load(f)
@@ -63,8 +37,6 @@ def get_durations(rounds, runtime=False):
         else:
             dur.append([w['finished'] - w['started'] for w in round['results']])
     return np.array(dur) # (rounds, worker)
-
-
 
 
 
@@ -93,7 +65,7 @@ def slugify(value, allow_unicode=False):
 
 
 
-def ridge_plot(x, g, bw_adjust=0.2, title=None, xlabel=None):
+def ridge_plot(x, g, bw_adjust=0.2, title=None, xlabel=None, xlim=None):
     sns.set_theme(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
     
     # Create the data
@@ -137,4 +109,7 @@ def ridge_plot(x, g, bw_adjust=0.2, title=None, xlabel=None):
     fig.get_children()[-1].set_xlabel(xlabel)
     fig.suptitle(title)
     
+    if xlim:
+        plt.gca().set_xlim(xlim)
+        
     return fig

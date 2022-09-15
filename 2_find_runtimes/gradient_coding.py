@@ -13,6 +13,7 @@ class GradientCoding:
         # parameters
         self.load = self.normalized_load(n, s)
         self.total_rounds = rounds
+        self.T = 0
         
         # delay profile
         assert delays.shape[1] >= rounds, \
@@ -36,7 +37,11 @@ class GradientCoding:
         for s in range(1, n+1):
             yield (s, )
 
-    
+
+    @classmethod
+    def delay(cls, s):
+        return 0
+
     
     def run(self) -> None:
         for round_ in range(self.total_rounds):
