@@ -10,11 +10,11 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
+DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 
 def load_profile(workers, invokes, load, batch, comp_type, region,
                      folder, complete_response=False):
     
-    DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
     exp_folder = Path(folder)
     fname = f"w{workers}-n{invokes}-l{slugify(load)}-b{batch}-c{slugify(comp_type)}-{region}"
     fpath = (DELAY_DIR / exp_folder / fname).with_suffix('.pkl')
@@ -113,3 +113,48 @@ def ridge_plot(x, g, bw_adjust=0.2, title=None, xlabel=None, xlim=None):
         plt.gca().set_xlim(xlim)
         
     return fig
+
+
+def parse_file_name(fname):
+    fname = Path(fname)
+    *comps, region = str(fname.stem).split('-')
+    
+    if len(comps) != 5:
+        return None
+    
+    for comp in comps:
+        flag, val = comp[0], comp[1:]
+        if flag == 'w':
+            workers = int(val)
+        elif flag == 'n':
+            invokes = int(val)
+        elif flag == 'l':
+            load = float(val.replace('_', '.'))
+        elif flag == 'b':
+            batch = int(val)
+        elif flag == 'c':
+            comp_type = val
+        else:
+            return None
+        
+    return workers, invokes, load, batch, comp_type, region
+    
+
+def folder_params(folder):
+    comp_sets = [set() for _ in range(6)]
+    for f in (DELAY_DIR / folder).iterdir():
+        if comps := parse_file_name(f):
+            for comp_set, comp in zip(comp_sets, comps):
+                comp_set.add(comp) 
+            
+    # workers, invokes, load, batch, comp_type, region
+    result = [list(comp_set) for comp_set in comp_sets]
+    result = [r[0] if len(r)==1 else r for r in result]
+    return result
+        
+        
+        
+        
+        
+        
+        

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from tqdm.notebook import tqdm, trange
 from sklearn.linear_model import LinearRegression
 
-from utils import get_durations, load_profile, ridge_plot
+from utils import get_durations, load_profile, ridge_plot, folder_params
 
 DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 
@@ -16,20 +16,10 @@ DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 
 # folder = 'sam-gc-cnn_profile_est_desktop4'
 # folder = 'sam-gc-resnet18_profile_est_mbp'
-folder = 'sam-gc-resnet18_profile_est_desktop'
+# folder = 'sam-gc-resnet18_profile_est_desktop'
+folder = 'sam-gc-cnn_profile_est_desktop_long'
 
-
-# parameters
-# regions = ['Canada', 'London', 'Tokyo', 'Sydney']
-regions = ['Canada']
-loads = np.arange(0, 1.25, 0.25)
-loads = [0.0, 0.02, 0.25, 0.5, 0.75, 1.0]
-
-workers = 256
-invokes = 25
-batch = 256
-comp_type = 'no_forloop'
-
+workers, invokes, loads, batch, comp_type, regions = folder_params(folder)
 
 #%% ------------- PLOT LOAD VS AVG. WORKER RUNTIME -------------------------
 
@@ -106,7 +96,7 @@ for region in regions:
     # x = np.array(durations).flatten() - l * base_comp[region][0]
     x = np.array(durations).flatten()
     
-    ##NOTE: remove this:
+    #NOTE: remove this:
     sel = x < 10
     x = x[sel]
     l = l[sel]

@@ -28,21 +28,27 @@ DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 
 # ------------------------ PARAMETERS ------------------------
 
-folder = 'sam-gc-cnn_profile_est_desktop4'
-workers = n = 256
-invokes = 20
+folder = 'sam-gc-cnn_profile_est_desktop_long'
+workers = 256
+invokes = 30
 batch = 2048
 region = 'Canada'
-comp_type='no_forloop',
+comp_type = 'no_forloop'
 
-n_jobs = 10  # number of jobs to complete
-base_load = 0.25
+n_jobs = 20  # number of jobs to complete
+base_load = 0.0
 mu = 0.2
 
 
 #%% ----------- LOAD RUNTIMES ----------------------------------------------
+
+n = workers
+
+runtime_dir = DELAY_DIR / f'{folder}_runtimes'
+profile_dir = DELAY_DIR / folder
+
 runtimes = []
-for p in Path(f'./{folder}_runtimes/').glob(f'{region}-mu{slugify(mu)}-w{workers}-n{invokes}-l{slugify(base_load)}-b{batch}*'):
+for p in runtime_dir.glob(f'{region}-mu{slugify(mu)}-w{workers}-n{invokes}-l{slugify(base_load)}-b{batch}*'):
     result = pickle.load(p.open('rb'))
     runtimes.append(result)
 
@@ -63,7 +69,7 @@ with open('train_acc.pkl', 'rb') as f:
     train_acc = pickle.load(f)
 train_acc = np.array(train_acc)
 
-with open(folder+'/base_comp.pkl', 'rb') as f:
+with open(profile_dir / 'base_comp.pkl', 'rb') as f:
     base_comps = pickle.load(f)
 base_comp = base_comps[region][0]
 
@@ -170,11 +176,10 @@ for runtime_dict in runtimes:
     Model = models[model_name]
     
     params = list(runtime_dict['durations'].keys())
-    times = np.array(list(runtime_dict['durations'].values()))
     loads = np.array([Model.normalized_load(n, *p) for p in params])
+    times = np.array(list(runtime_dict['durations'].values()))
     total_rounds = np.array([Model.delay(*p) + n_jobs for p in params])
-    
-    times = np.array(times)
+
     times = times + loads * total_rounds * base_comps_range[:, None]
     
     ax.plot(base_comps_range, times.min(axis=1), label=model_name, c=colors[model_name])
@@ -201,7 +206,6 @@ row_list = []
 for region in regions:
 
     runtimes = []
-    mu_str = str(mu).replace('.', '-')
     for p in Path(f'./{folder}_runtimes/').glob(f'{folder}-{region}-mu{slugify(mu)}-w{workers}-n{invokes}-l{slugify(base_load)}-b{batch}*'):
         result = pickle.load(p.open('rb'))
         runtimes.append(result)

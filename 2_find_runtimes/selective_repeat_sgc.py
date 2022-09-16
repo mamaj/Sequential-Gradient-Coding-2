@@ -3,28 +3,28 @@ import math
 
 class SelectiveRepeatSGC:
     
-    def __init__(self, n, B, W, lambd, rounds, mu, delays) -> None:
+    def __init__(self, n, B, W, lambd, n_jobs, mu, delays) -> None:
         # design parameters
         self.n = n # num workers
         self.B = B
         self.W = W
         self.lambd = lambd
-        self.rounds = rounds
+        self.n_jobs = n_jobs
         self.mu = mu
         assert (W-1) % B == 0, 'B should devide W-1.'
         
         # parameters
         self.s = math.ceil((B * lambd) / (W - 1 + B))
         self.load = self.normalized_load(n, self.s)
-        self.T = B
-        self.total_rounds = rounds + self.T
+        self.T = self.delay(B, W, lambd)
+        self.total_rounds = n_jobs + self.T
         
         # delay profile
         assert delays.shape[1] >= self.total_rounds,\
             'delays.shape[1] should have at least `rounds + B` elements.'
         assert delays.shape[0] >= n, \
             'delays.shape[0] should have at least `n` elements'
-        self.delays = delays[:n, :rounds + B] # (workers, rounds + T=B)
+        self.delays = delays[:n, :n_jobs + B] # (workers, rounds + T=B)
         
         # state of the master: (workers, round)
         self.state = np.full((n , self.total_rounds), np.nan) 
@@ -120,7 +120,7 @@ class SelectiveRepeatSGC:
                 shape: (2*n,) 
         """
 
-        if job > self.rounds:
+        if job > self.n_jobs:
             raise ValueError('job > rounds')
         return np.concatenate((self.state[:, job],
                                self.state[:, job+self.B]))
