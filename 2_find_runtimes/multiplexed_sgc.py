@@ -98,7 +98,7 @@ class MultiplexedSGC:
         if self.follows_straggler_model(round_, is_straggler):
             # do not wait for all: apply straggler pattern
             round_result[is_straggler, :] = -1
-            round_duration = wait_time
+            round_duration = np.minimum(wait_time, delay.max())
         else:
             # wait for all: do not apply stragglers
             round_duration = delay.max()
@@ -110,7 +110,7 @@ class MultiplexedSGC:
 
     def _get_job(self, round_, minitask=None) -> int:
         """ returns the job corresponding to a minitask in a round. 
-        if minitas is None: 
+        if minitask is None: 
             returns the job index that is decodable in round round_
         else:
             returns the job that the minitask belongs to

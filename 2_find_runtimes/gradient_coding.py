@@ -65,7 +65,7 @@ class GradientCoding:
         if self.follows_straggler_model(is_straggler):
             # do not wait for all: apply straggler pattern
             round_result[is_straggler] = -1
-            round_duration = wait_time
+            round_duration = np.minimum(wait_time, delay.max())
         else:
             # wait for all: do not apply stragglers
             round_duration = delay.max()
