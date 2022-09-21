@@ -1,11 +1,14 @@
 #%% ----------- IMPORTS ----------------------------------------------------------
 import pickle
 from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor
+from itertools import repeat
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from IPython.display import display
+from sklearn.linear_model import LinearRegression
 
 from gradient_coding import GradientCoding
 from multiplexed_sgc import MultiplexedSGC
@@ -31,17 +34,71 @@ DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 
 #%% ------------------------ PARAMETERS ------------------------
 
-folder = 'sam-gc-cnn_profile_est_desktop'
+# folder = 'sam-gc-cnn_profile_est_desktop'
 # folder = 'sam-gc-cnn_profile_est_desktop_long'
+folder = 'sam-gc-cnn_profile_est_desktop_long2'
 
-workers, invokes, loads, batch, comp_type, region = folder_params(folder)
+workers, invokes, profile_loads, batch, comp_type, regions = folder_params(folder)
+region = 'Canada'
 
-n_jobs = 15  # number of jobs to complete
+n_jobs = 30  # number of jobs to complete
 base_load = 0.0
-mu = 0.2
+mu = 1.0
+
+
+
+print(f'{workers=}, {invokes=}, {profile_loads=}, {batch=}, {comp_type=}, {regions=}')
+
+#%% ---------------------FIND BASE_COMP ------------------------
+
+# analyze straggler pattern of each profile
+
+fig, axs = plt.subplots(1, len(profile_loads), figsize=(15, 15))
+
+for load, ax in zip(profile_loads, axs.flat):
+    rounds = load_profile(workers, invokes, load, batch, comp_type, region, folder)
+    durs = get_durations(rounds).T
+    
+    wait_time = durs.min(axis=0) * (1 + mu)
+    stragglers = np.nonzero(durs > wait_time)
+    
+    im = ax.matshow(durs)
+    im = ax.matshow(durs > wait_time)
+
+    ax.set_title(load)
+
+
+durations = []
+for load in profile_loads:
+    # read the file with the `region` and `load`
+    rounds = load_profile(workers, invokes, load, batch, comp_type, region, folder)
+    durs = get_durations(rounds).flatten()
+    durations.append(durs)
+    
+lr = LinearRegression().fit(
+    y = np.array(durations).reshape(-1,),
+    X = np.array([ [l] * durations[0].size  for l in profile_loads]).reshape(-1, 1)
+) 
+base_comp = lr.coef_[0]
+
+# plots
+fig, ax = plt.subplots()
+ax.errorbar(x=profile_loads, y=[d.mean() for d in durations],
+    # yerr=[d.std() for d in durations],
+    label=region, marker='o'
+)
+
+x = np.arange(0, 1, 0.1)
+y = x * lr.coef_[0] + lr.intercept_
+ax.plot(x, y, 'r--')
+
+ax.legend()
+ax.grid()
+ax.set(xlabel = 'Normalized Load', ylabel = 'Avg. runtime (s)')
 
 
 #%% ------------------------ LOAD PROFILE ------------------------
+
 n = workers
 
 with open('train_acc.pkl', 'rb') as f:
@@ -59,22 +116,22 @@ run_results = load_profile(
 )
 base_delays = get_durations(run_results).T # (workers, rounds)
 
-with open(DELAY_DIR / folder / 'base_comp.pkl', 'rb') as f:
-    base_comps = pickle.load(f)
-base_comp = base_comps[region][0]
+# # shuffle workers cross rounds
+# for r in base_delays.T:
+#     np.random.shuffle(r)
 
 
+#%% ----------- PLOTS ----------------------------------------------------------
 
-#%% ----------- FIND RUNTIMES ----------------------------------------------
 def find_runtime(Model, params):
     load = Model.normalized_load(n, *params)
     delays = base_delays + (load - base_load) * base_comp
     model = Model(workers, *params, n_jobs, mu, delays)
     model.run()
-    return model.durations.sum()
+    durations = model.durations
+    assert (durations >= 0).all()
+    return durations.sum()
 
-
-#%% ----------- PLOTS ----------------------------------------------------------
 
 max_delay = invokes - n_jobs  # total number of rounds profiled - number of jobs to complete
 
@@ -87,6 +144,10 @@ for model_name, Model in models.items():
  
     loads = [Model.normalized_load(n, *params) for params in params_combinations]
     runtimes = [find_runtime(Model, params) for params in params_combinations]
+    
+    # with ProcessPoolExecutor() as executor:
+    #     runtimes = list(executor.map(find_runtime, repeat(Model), params_combinations))
+    
     ax.plot(loads, runtimes, '.', ms=2, label=model_name, c=colors[model_name])
     
     best_idx = np.argmin(runtimes)
@@ -131,7 +192,10 @@ ax.legend();
 # ax.set_xlim(0, 1000)
 
 
+#%% ----------- SAVE -----------------------------------------------------
 
+fname = f'mu{slugify(mu)}-base_load{slugify(base_load)}-njobs{n_jobs}-base_comp{slugify(base_comp)}-{region}'
+df.to_csv((DELAY_DIR / folder / fname).with_suffix('.csv'))
 
 #%% ----------- sweep load -----------------------------------------------------
 
@@ -163,47 +227,3 @@ ax.legend();
 # ax.set_xlabel('base computation time (s)')
 # ax.set_ylabel(f'Runtime (s) for {n_jobs} rounds')
 # ax.set_title(f'{workers=} {region=} {mu=}')
-
-
-
-# %% save best params/load for each [mu, method]
-
-mu = 0.2
-regions = ['Canada', 'Tokyo', 'London', 'Sydney']
-
-row_list = []
-for region in regions:
-
-    runtimes = []
-    for p in Path(f'./{folder}_runtimes/').glob(f'{folder}-{region}-mu{slugify(mu)}-w{workers}-n{invokes}-l{slugify(base_load)}-b{batch}*'):
-        result = pickle.load(p.open('rb'))
-        runtimes.append(result)
-
-
-    for runtime_dict in runtimes:    
-        model_name = runtime_dict['model name']
-        Model = models[model_name]
-            
-        loads = []
-        runtimes = []
-        for params, runtime in runtime_dict['durations'].items():
-            load = Model.normalized_load(n, *params)
-            total_rounds = Model.delay(*params) + n_jobs
-            time = runtime + (total_rounds * (load - base_load) * base_comp)
-            
-            loads.append(load)
-            runtimes.append(time)
-
-        best_idx = np.argmin(runtimes)
-        row_list.append({
-            'model': model_name,
-            'region': region,
-            'runtime' : runtimes[best_idx],
-            'params' : list(runtime_dict['durations'].keys())[best_idx],
-            'load' : loads[best_idx] ,
-        })
-
-df = pd.DataFrame(row_list)
-df.to_csv(folder + '/best_params.csv', index=False)
-
-# %%
