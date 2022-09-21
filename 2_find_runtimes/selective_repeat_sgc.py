@@ -47,7 +47,7 @@ class SelectiveRepeatSGC:
     def param_combinations(cls, n, rounds, max_delay):
         for lambd in range(1, n+1):
             for B in range(1, max_delay+1):
-                for W in range(B+1, rounds, B):  # W = x * B + 1
+                for W in range(B+1, rounds+1, B):  # W = x * B + 1
                     yield B, W, lambd
 
     @classmethod
@@ -69,32 +69,39 @@ class SelectiveRepeatSGC:
     def perform_round(self, round_) -> None:
         """ This will fill state(:,  round_) """
         
-        # every worker by default returns task for round (round_)
-        round_result = np.full((self.n, ), round_)
-        
-        # if there are v > s stragglers in round (round_ - B), v-s of
-        # those stragglers repeat their (round_ - B) task instead of the 
-        # current task
         decode_job = self.get_decodable_job(round_)
-        if decode_job >= 0:
-            no_contrib_workers = np.flatnonzero(self.state[:, decode_job] != decode_job)
-            if (v := no_contrib_workers.size) > self.s:
-                repeat_workers = no_contrib_workers[0 : v - self.s]
-                round_result[repeat_workers] = decode_job
-            
-        # apply stragglers
-        delay = self.delays[:, round_]
-        wait_time = delay.min() * (1 + self.mu) 
-        is_straggler = delay > wait_time
         
-        if self.follows_straggler_model(round_, is_straggler):
-            # do not wait for all: apply straggler pattern
-            round_result[is_straggler] = -1
-            round_duration = wait_time
-        else:
-            # wait for all: do not apply stragglers
-            round_duration = delay.max()
+        # if we are in last B rounds, we might not need to perform
+        if (round_ >= self.n_jobs) and self.is_decodable(decode_job):
+            round_duration = 0
+            round_result = np.full((self.n, ), np.nan)
             
+        else:
+            # every worker by default returns task for round (round_)
+            round_result = np.full((self.n, ), round_)
+
+            # if there are v > s stragglers in round (round_ - B), v-s of
+            # those stragglers repeat their (round_ - B) task instead of the 
+            # current task
+            if decode_job >= 0:
+                no_contrib_workers = np.flatnonzero(self.state[:, decode_job] != decode_job)
+                if (v := no_contrib_workers.size) > self.s:
+                    repeat_workers = no_contrib_workers[0 : v - self.s]
+                    round_result[repeat_workers] = decode_job
+
+            # apply stragglers
+            delay = self.delays[:, round_]
+            wait_time = delay.min() * (1 + self.mu) 
+            is_straggler = delay > wait_time
+
+            if self.follows_straggler_model(round_, is_straggler):
+                # do not wait for all: apply straggler pattern
+                round_result[is_straggler] = -1
+                round_duration = np.minimum(wait_time, delay.max())
+            else:
+                # wait for all: do not apply stragglers
+                round_duration = delay.max()
+
         # set round_result into state
         self.state[:, round_] = round_result
         self.durations[round_] = round_duration
@@ -104,7 +111,7 @@ class SelectiveRepeatSGC:
         """
         checks whether a job can be decoded.
         To be able to decode job t, there should be at least n - s tasks received
-        from workers in rounds  t and t + B.
+        from workers in rounds t and t + B.
         """
         task_results = self.task_results(job) # (2 * n, )
         return (task_results == job).sum() >= self.n - self.s
