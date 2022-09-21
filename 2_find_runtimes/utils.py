@@ -147,10 +147,14 @@ def folder_params(folder):
             for comp_set, comp in zip(comp_sets, comps):
                 comp_set.add(comp) 
             
-    # workers, invokes, load, batch, comp_type, region
-    result = [list(comp_set) for comp_set in comp_sets]
-    result = [r[0] if len(r)==1 else r for r in result]
-    return result
+    workers, invokes, load, batch, comp_type, regions = [sorted(comp_set) for comp_set in comp_sets]
+    
+    workers = workers[0]
+    invokes = invokes[0]
+    batch = batch[0]
+    comp_type = comp_type[0]
+
+    return workers, invokes, load, batch, comp_type, regions
         
         
         
