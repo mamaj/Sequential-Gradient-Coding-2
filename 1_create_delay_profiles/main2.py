@@ -8,7 +8,7 @@ from utils import slugify
 from run import run 
 
 
-folder = 'sam-gc-cnn_profile_est_desktop_long2'
+folder = 'profile_est_desktop_long2'
 sam_name = 'sam-gc-cnn'
 
 # invokes = 40
@@ -30,7 +30,7 @@ df = pd.read_csv(fname, index_col=0)
 if __name__ == '__main__':
 
     loads = df['load']
-    for load in df['load']:
+    for load in tqdm(df['load']):
         print(load)
-        run(workers, invokes, load, batch, comp_type, region, sam_name, folder, dryrun=2)
+        run(workers, invokes, load, batch, comp_type, region, sam_name, folder, dryrun=2, suffix=2)
         
