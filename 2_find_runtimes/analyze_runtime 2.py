@@ -63,10 +63,10 @@ for load, ax in zip(profile_loads, axs.flat):
     stragglers = np.nonzero(durs > wait_time)
     
     im = ax.matshow(durs)
-    im = ax.matshow(durs > wait_time)
-
+    ax.matshow(durs > wait_time)
     ax.set_title(load)
 
+# fig.colorbar(im, location='top')
 
 durations = []
 for load in profile_loads:
@@ -177,8 +177,8 @@ for model_name, Model in models.items():
     model.run()
     durations = model.durations
     
-    x = durations.cumsum()
-    x = x[model.T:] 
+    x = durations[durations>0].cumsum()
+    x = x[:n_jobs] 
     # plt.plot(x, train_acc[:len(x)], label=model_name)
     ax.plot(x, np.arange(n_jobs)+1, label=f'{model_name} {best_params}', c=colors[model_name])
 
@@ -227,3 +227,49 @@ df.to_csv((DELAY_DIR / folder / fname).with_suffix('.csv'))
 # ax.set_xlabel('base computation time (s)')
 # ax.set_ylabel(f'Runtime (s) for {n_jobs} rounds')
 # ax.set_title(f'{workers=} {region=} {mu=}')
+
+#%% ----------- REAL PROFILES -----------------------------------------------------
+
+folder_real = folder + '_real'
+suffix = 1
+
+fig, ax = plt.subplots()
+for model_name, Model in models.items():
+    best_params = df.loc[model_name, 'params']
+    load = df.loc[model_name, 'load']
+    
+    # delays = base_delays + (load - base_load) * base_comp
+    run_results = load_profile(
+        workers=workers,
+        invokes=invokes,
+        load=load,
+        batch=batch,
+        comp_type=comp_type,
+        region=region,
+        folder=folder_real,
+        suffix=suffix,
+    )
+    delays = get_durations(run_results).T # (workers, rounds)
+
+    
+    model = Model(workers, *best_params, n_jobs, mu, delays)
+    model.run()
+    durations = model.durations
+    
+    df.loc[model_name, 'runtime_real'] = durations.sum()
+    
+    x = durations.cumsum()
+    x = x[model.T:] 
+    # plt.plot(x, train_acc[:len(x)], label=model_name)
+    ax.plot(x, np.arange(n_jobs)+1, label=f'{model_name} {best_params}', c=colors[model_name])
+
+
+ax.set_xlabel('time (s)')
+# ax.set_ylabel('train acc')
+ax.set_ylabel('# of jobs done')
+ax.grid()
+ax.set_title(f'{workers=} {region=} {mu=} {n_jobs=} {base_comp=:.3f}')
+ax.legend();
+# ax.set_xlim(0, 1000)
+
+display(df)

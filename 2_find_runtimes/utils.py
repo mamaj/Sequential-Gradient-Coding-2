@@ -13,10 +13,12 @@ import matplotlib.pyplot as plt
 DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 
 def load_profile(workers, invokes, load, batch, comp_type, region,
-                     folder, complete_response=False):
+                     folder, complete_response=False, suffix=None):
+    
+    suffix = '_' + str(suffix) if suffix else ''
     
     exp_folder = Path(folder)
-    fname = f"w{workers}-n{invokes}-l{slugify(load)}-b{batch}-c{slugify(comp_type)}-{region}"
+    fname = f"w{workers}-n{invokes}-l{slugify(load)}-b{batch}-c{slugify(comp_type)}-{region}{suffix}"
     fpath = (DELAY_DIR / exp_folder / fname).with_suffix('.pkl')
 
     with open(fpath, 'rb') as f:
