@@ -17,7 +17,7 @@ DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 # folder = 'sam-gc-cnn_profile_est_desktop4'
 # folder = 'sam-gc-resnet18_profile_est_mbp'
 # folder = 'sam-gc-resnet18_profile_est_desktop'
-folder = 'sam-gc-cnn_profile_est_desktop_long'
+folder = 'sam-gc-cnn_profile_est_desktop_long2'
 
 workers, invokes, loads, batch, comp_type, regions = folder_params(folder)
 
@@ -42,13 +42,6 @@ for region in regions:
         label=region,
         marker='o'
     )
-    
-    lr = LinearRegression().fit(
-        y = np.array(durations).reshape(-1,),
-        X = np.array([ [l] * durations[0].size  for l in loads]).reshape(-1, 1)
-        ) 
-    
-    base_comp[region] = [lr.coef_[0], lr.intercept_]
 
 ax.legend()
 ax.grid()
@@ -56,6 +49,29 @@ ax.set(
     xlabel = 'Normalized Load',
     ylabel = 'Avg. runtime (s)',
 )
+
+#%% --------------- PLOT HISTOGRAM OF RUNTIMES --------------------------------
+
+for region in regions:
+    durations = []
+    for load in loads:
+        # read the file with the `region` and `load`
+        rounds = load_profile(workers, invokes, load, batch, comp_type, region, folder)
+        durs = get_durations(rounds).flatten()
+        durations.append(durs)
+        
+    l = np.array([[l] * durations[0].size  for l in loads]).flatten()
+    # x = np.array(durations).flatten() - l * base_comp[region][0]
+    x = np.array(durations).flatten()
+    
+    #NOTE: remove this:
+    sel = x < 10
+    x = x[sel]
+    l = l[sel]
+    
+    
+    fig = ridge_plot(x, l, bw_adjust=1, xlabel='completion time (s)', title=region)
+
 
 #%% --------------- FIND BASE_COMP -----------------------------------
 
@@ -81,26 +97,3 @@ fpath = DELAY_DIR / folder / 'base_comp.pkl'
 with open(fpath, 'wb') as f:
     pickle.dump(base_comp, f)
     
-
-#%% --------------- PLOT HISTOGRAM OF RUNTIMES --------------------------------
-
-for region in regions:
-    durations = []
-    for load in loads:
-        # read the file with the `region` and `load`
-        rounds = load_profile(workers, invokes, load, batch, comp_type, region, folder)
-        durs = get_durations(rounds).flatten()
-        durations.append(durs)
-        
-    l = np.array([[l] * durations[0].size  for l in loads]).flatten()
-    # x = np.array(durations).flatten() - l * base_comp[region][0]
-    x = np.array(durations).flatten()
-    
-    #NOTE: remove this:
-    sel = x < 10
-    x = x[sel]
-    l = l[sel]
-    
-    
-    fig = ridge_plot(x, l, bw_adjust=1, xlabel='completion time (s)', title=region)
-
