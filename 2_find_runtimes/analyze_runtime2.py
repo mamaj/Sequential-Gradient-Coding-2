@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from IPython.display import display
 from sklearn.linear_model import LinearRegression
+from tqdm.notebook import tqdm
 
 from gradient_coding import GradientCoding
 from multiplexed_sgc import MultiplexedSGC
 from selective_repeat_sgc import SelectiveRepeatSGC
 from no_coding import NoCoding
 from utils import get_durations, load_profile, slugify, folder_params
-
 
 models = {
     'GC': GradientCoding,
@@ -36,12 +36,13 @@ DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 
 # folder = 'sam-gc-cnn_profile_est_desktop'
 # folder = 'sam-gc-cnn_profile_est_desktop_long'
-folder = 'sam-gc-cnn_profile_est_desktop_long2'
+# folder = 'sam-gc-cnn_profile_est_desktop_long2'
+folder = 'sam-gc-cnn_profile_est_desktop_long4'
 
 workers, invokes, profile_loads, batch, comp_type, regions = folder_params(folder)
 region = 'Canada'
 
-n_jobs = 30  # number of jobs to complete
+n_jobs = 80  # number of jobs to complete
 base_load = 0.0
 mu = 1.0
 
@@ -51,7 +52,11 @@ print(f'{workers=}, {invokes=}, {profile_loads=}, {batch=}, {comp_type=}, {regio
 
 #%% ---------------------FIND BASE_COMP ------------------------
 
-# analyze straggler pattern of each profile
+# analyze straggler pattern of each profile-------------------
+max_dur = 0
+for load in profile_loads:
+    rounds = load_profile(workers, invokes, load, batch, comp_type, region, folder)
+    max_dur = np.maximum(get_durations(rounds).max(), max_dur)
 
 fig, axs = plt.subplots(1, len(profile_loads), figsize=(15, 15))
 
@@ -62,12 +67,16 @@ for load, ax in zip(profile_loads, axs.flat):
     wait_time = durs.min(axis=0) * (1 + mu)
     stragglers = np.nonzero(durs > wait_time)
     
-    im = ax.matshow(durs)
+    im = ax.matshow(durs, vmin=0, vmax=max_dur)
     ax.matshow(durs > wait_time)
-    ax.set_title(load)
+    ax.set_title(f'{load=:.3f}')
 
-# fig.colorbar(im, location='top')
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+fig.colorbar(im, cax=cbar_ax)
 
+
+# find base comp-------------------
 durations = []
 for load in profile_loads:
     # read the file with the `region` and `load`
@@ -81,7 +90,7 @@ lr = LinearRegression().fit(
 ) 
 base_comp = lr.coef_[0]
 
-# plots
+# plots-------------------
 fig, ax = plt.subplots()
 ax.errorbar(x=profile_loads, y=[d.mean() for d in durations],
     # yerr=[d.std() for d in durations],
@@ -101,7 +110,7 @@ ax.set(xlabel = 'Normalized Load', ylabel = 'Avg. runtime (s)')
 
 n = workers
 
-with open('train_acc.pkl', 'rb') as f:
+with open(Path(__file__).parent / 'train_acc.pkl', 'rb') as f:
     train_acc = pickle.load(f)
 train_acc = np.array(train_acc)
 
@@ -143,7 +152,7 @@ for model_name, Model in models.items():
     params_combinations = list(Model.param_combinations(workers, n_jobs, max_delay))
  
     loads = [Model.normalized_load(n, *params) for params in params_combinations]
-    runtimes = [find_runtime(Model, params) for params in params_combinations]
+    runtimes = [find_runtime(Model, params) for params in tqdm(params_combinations)]
     
     # with ProcessPoolExecutor() as executor:
     #     runtimes = list(executor.map(find_runtime, repeat(Model), params_combinations))
@@ -231,45 +240,76 @@ df.to_csv((DELAY_DIR / folder / fname).with_suffix('.csv'))
 #%% ----------- REAL PROFILES -----------------------------------------------------
 
 folder_real = folder + '_real'
-suffix = 1
+# suffix = 3
+n_jobs = 110
 
+# load all real profiles
+dur_list = []
+for model_name, load in zip(df.index, df['load']):
+    if model_name == 'SRSGC':
+        load = df['load']['GC']
+    load_dur = []
+    for suffix in [1, 2, 3]:
+        rounds = load_profile(workers, invokes, load, batch, comp_type, region, folder_real, suffix=suffix)
+        load_dur.append(get_durations(rounds).T)
+    load_dur = np.concatenate(load_dur, axis=1)
+    
+    # # shuffle workers cross rounds
+    np.random.seed(3)
+    for r in load_dur.T:
+        np.random.shuffle(r)
+        
+    dur_list.append(load_dur)
+
+
+
+# analyze straggler pattern of each profile
+fig, axs = plt.subplots(1, len(df), figsize=(15, 15))
+for durs, ax, load in zip(dur_list, axs.flat, df['load']):
+    wait_time = durs.min(axis=0) * (1 + mu)
+    stragglers = np.nonzero(durs > wait_time)
+    
+    im = ax.matshow(durs, vmin=0, vmax=np.max(dur_list))
+    # ax.matshow(durs > wait_time)
+    ax.set_title(f'{load=:.5f}')
+
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.85, 0.35, 0.03, 0.3])
+fig.colorbar(im, cax=cbar_ax)
+
+
+
+# find real runtimes
 fig, ax = plt.subplots()
-for model_name, Model in models.items():
+for model_name, delays in zip(df.index, dur_list):
+    Model = models[model_name]
     best_params = df.loc[model_name, 'params']
     load = df.loc[model_name, 'load']
     
     # delays = base_delays + (load - base_load) * base_comp
-    run_results = load_profile(
-        workers=workers,
-        invokes=invokes,
-        load=load,
-        batch=batch,
-        comp_type=comp_type,
-        region=region,
-        folder=folder_real,
-        suffix=suffix,
-    )
-    delays = get_durations(run_results).T # (workers, rounds)
-
     
     model = Model(workers, *best_params, n_jobs, mu, delays)
     model.run()
     durations = model.durations
     
-    df.loc[model_name, 'runtime_real'] = durations.sum()
+    df.loc[model_name, f'runtime_real'] = durations.sum()
     
-    x = durations.cumsum()
-    x = x[model.T:] 
+    x = durations[durations>0].cumsum()
+    x = x[:n_jobs] 
     # plt.plot(x, train_acc[:len(x)], label=model_name)
     ax.plot(x, np.arange(n_jobs)+1, label=f'{model_name} {best_params}', c=colors[model_name])
 
 
 ax.set_xlabel('time (s)')
-# ax.set_ylabel('train acc')
 ax.set_ylabel('# of jobs done')
 ax.grid()
 ax.set_title(f'{workers=} {region=} {mu=} {n_jobs=} {base_comp=:.3f}')
-ax.legend();
-# ax.set_xlim(0, 1000)
+ax.legend()
 
-display(df)
+df = df.rename(columns={
+    'runtime_real': f'runtime ({n_jobs} jobs)',
+})
+
+display(df.drop('runtime', axis=1))
+
+#%%
