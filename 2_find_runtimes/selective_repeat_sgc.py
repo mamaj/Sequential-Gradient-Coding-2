@@ -24,10 +24,10 @@ class SelectiveRepeatSGC:
             'delays.shape[1] should have at least `rounds + B` elements.'
         assert delays.shape[0] >= n, \
             'delays.shape[0] should have at least `n` elements'
-        self.delays = delays[:n, :n_jobs + B] # (workers, rounds + T=B)
+        self.delays = delays[:n, :self.total_rounds] # (workers, rounds + T=B)
         
         # state of the master: (workers, round)
-        self.state = np.full((n , self.total_rounds), np.nan) 
+        self.state = np.full((n , self.total_rounds), np.nan)    
         self.durations = np.full((self.total_rounds, ), -1.)
     
     
@@ -94,7 +94,7 @@ class SelectiveRepeatSGC:
             wait_time = delay.min() * (1 + self.mu) 
             is_straggler = delay > wait_time
 
-            if self.follows_straggler_model(round_, is_straggler):
+            if self.follows_straggler_model(round_, is_straggler, round_result):
                 # do not wait for all: apply straggler pattern
                 round_result[is_straggler] = -1
                 round_duration = np.minimum(wait_time, delay.max())
@@ -133,7 +133,7 @@ class SelectiveRepeatSGC:
                                self.state[:, job+self.B]))
     
     
-    def follows_straggler_model(self, r, is_straggler) -> bool:
+    def follows_straggler_model(self, r, is_straggler, round_result) -> bool:
         """ Checks if at any given round, the spatial and temporal conditions 
             of (B, W, lambd)-bursty straggler model are met.
             
@@ -144,26 +144,43 @@ class SelectiveRepeatSGC:
             the current round.
             
             r (int): current round idx.
-            is_straggler (ndarray): boolean array of length n.
+            is_straggler (ndarray): boolean array of length n. Straggler pattern 
+                of the current round.
+            round_result (ndarray): result of the current round.
         """
         
         # 1. spatial cond: at most `lambd` unique stragglers over the 
         # past W rounds.
-        state_window = self.state[:, np.maximum(0, r+1-self.W) : r]
-        been_straggler = (state_window == -1).any(axis=1)
-        num_stragglers = (been_straggler | is_straggler).sum()
+        window = np.arange(np.maximum(0, r+1-self.W), r)
+        been_straggler = self.stragglers(window, exemption=True)       
         
+        num_stragglers = (been_straggler | is_straggler).sum()
         if num_stragglers > self.lambd:
             return False
         
-        # 2. temporal cond: if worif worker i is a straggeler at the 
+        # 2. temporal cond: if worker i is a straggeler at the 
         # current round, it cannot be a straggeler in [-W, -B]:
-        state_window = self.state[:, np.maximum(0, r+1-self.W) : np.maximum(0, r+1-self.B)]
-        been_straggler = (state_window == -1).any(axis=1)
-        
+        window = np.arange(np.maximum(0, r+1-self.W), np.maximum(0, r+1-self.B))
+        been_straggler = self.stragglers(window, exemption=True)       
+
         if (been_straggler & is_straggler).any():
             return False
         
         return True
     
     
+    def stragglers(self, window, exemption=True):
+        state_window = self.state[:, window]
+        been_straggler = (state_window == -1)
+
+        # exclude some rounds from straggler counts:
+        if exemption:
+            exempt1 = np.all((state_window == window) | (state_window == -1), axis=0)
+            exempt2 = (state_window == -1).sum(axis=0) <= self.s
+            exempt = exempt1 & exempt2 
+            been_straggler[:, exempt] = False
+        
+        been_straggler = been_straggler.any(axis=1)
+        return been_straggler
+
+        
