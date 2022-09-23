@@ -33,4 +33,4 @@ python main.py \
 
 python main.py -n 30 -w 256 -b 2048 -l 0.0 0.25 0.5 0.75 1.0 -c no_forloop -r Canada -f profile_est_desktop_long -s sam-gc-cnn -d 2
 
-python main.py -n 25 -w 256 -b 256 -l 0.5 0.75 1.0 -c no_forloop -r Canada -f profile_est_desktop -s sam-gc-resnet18 -d 2
+python main.py -n 100 -w 256 -b 4096 -l 0.0 -c no_forloop -r Canada -f profile_est_desktop_long2 -s sam-gc-cnn -d 2
