@@ -32,6 +32,7 @@ if __name__ == '__main__':
 
     loads = df['load']
     for load in tqdm(df['load']):
-        print(load)
-        run(workers, invokes, load, batch, comp_type, region, sam_name, folder, dryrun=2, suffix=4)
+        print(f'{load = }')
+        print()
+        run(workers, invokes, load, batch, comp_type, region, sam_name, folder, dryrun=2, suffix=5)
         
