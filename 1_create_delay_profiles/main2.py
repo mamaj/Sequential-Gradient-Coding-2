@@ -49,7 +49,6 @@ fpath = f'../delay_profiles/sam-gc-cnn_profile_est_desktop_long4/mu1_000-base_lo
 df = pd.read_csv(fpath, index_col=0)
 
 
-
 if __name__ == '__main__':
 
     folder = folder[folder.find('_')+1:]
@@ -59,5 +58,5 @@ if __name__ == '__main__':
     for load in (bar:=tqdm(df['load'])):
         bar.set_description(f'{load= :.4f}')
         
-        run(workers, invokes, load, batch, comp_type, region, sam_name, folder, dryrun=0, suffix=404)
+        run(workers, invokes, load, batch, comp_type, region, sam_name, folder, dryrun=0, suffix=405)
         
