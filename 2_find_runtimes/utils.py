@@ -17,13 +17,14 @@ def load_profile(workers, invokes, load, batch, comp_type, region,
     
     suffix = '_' + str(suffix) if suffix else ''
     
-    exp_folder = Path(folder)
+    folder = Path(folder)
     fname = f"w{workers}-n{invokes}-l{slugify(load)}-b{batch}-c{slugify(comp_type)}-{region}{suffix}"
-    fpath = (DELAY_DIR / exp_folder / fname).with_suffix('.pkl')
+    
+    rounds = []
+    for fpath in (DELAY_DIR / folder).glob(fname+'*'):
+        with open(fpath, 'rb') as f:
+            rounds += pickle.load(f)
 
-    with open(fpath, 'rb') as f:
-        rounds = pickle.load(f)
-        
     if not complete_response:
         for r in rounds:
             for res in r['results']:

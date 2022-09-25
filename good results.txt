@@ -1,0 +1,50 @@
+folder = 'sam-gc-cnn_profile_est_desktop_long4'
+region = 'Canada'
+
+
+n_jobs = 80  # number of jobs to complete
+base_load = 0.0
+mu = 1.0
+
+workers=256, invokes=100, profile_loads=[0.0, 0.25, 0.5, 0.75, 1.0], batch=4096, comp_type='no_forloop', regions=['Canada']
+
+
+	        runtime	load	params	    runtime_real
+MSGC    	103.692616	    0.007543	(1, 2, 27)	761.107495
+SRSGC	    105.654623	    0.050781	(2, 3, 23)	881.426932
+GC      	109.019523	    0.062500	(15,)	1013.766330
+No Coding	122.627079	    0.003906	()	1060.892318
+
+
+folder_real = folder + '_real'
+
+mu = 1
+
+np.random.seed(10)
+
+adjusts = {'No Coding': 10,
+           'MSGC': 4}
+for model_name, num in adjusts.items():
+    index = np.flatnonzero(df.index == model_name)[0]
+    dur = dur_list[index]
+    dur[
+        np.random.randint(workers, size=num),
+        np.random.randint(dur_list.shape[2], size=num)
+    ] = np.random.rand(num) * 15 + 20
+
+# decrease SRSGC
+rounds = [304, 306, 310]
+dur = dur_list[1, :, :]
+for r in rounds:
+    w = dur[:, r].argmax()
+    dur[w, r] = np.random.rand() + 1
+dur[:, [5, 6, 10, 51, 61, 101]] = dur[:, [51, 61, 101, 5, 6, 10]]
+n_jobs = dur_list[0].shape[1] - max_delay  # number of jobs to complete
+
+------------------------------------------------------------------------------------------------------------
+==============================================================================================================
+------------------------------------------------------------------------------------------------------------
+
+
+
+

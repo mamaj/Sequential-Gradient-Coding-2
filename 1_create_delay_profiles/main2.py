@@ -11,22 +11,42 @@ from run import run
 folder = 'profile_est_desktop_long4_real'
 sam_name = 'sam-gc-cnn'
 
-# invokes = 40
-invokes = 100
+
+region = 'London'
+
 
 workers = 256
 batch = 4096
 comp_type = 'no_forloop'
-region = 'Canada'
+# region = 'Canada'
 
-# n_jobs = 30  # number of jobs to complete
-# base_load = 0.0
-# mu = 1.0
 
-# fname = '../delay_profiles/sam-gc-cnn_profile_est_desktop_long2/mu1_000-base_load0_000-njobs30-base_comp2_115-Canada.csv'
-fname = '../delay_profiles/sam-gc-cnn_profile_est_desktop_long4/mu1_000-base_load0_000-njobs80-base_comp2_166-Canada.csv'
+invokes_est = 100
+max_delay = 20
+n_jobs = 80
+assert n_jobs == invokes_est - max_delay  # number of jobs to complete
+
+
+base_load = 0.0
+mu = 1.0
+
+
+base_comp = 2.166
+
+
+
+invokes = 100
+fname = f'mu{slugify(mu)}-base_load{slugify(base_load)}-njobs{n_jobs}-base_comp{slugify(base_comp)}-{region}'
+
+'''examples:
+
+fname = '../delay_profiles/sam-gc-cnn_profile_est_desktop_long2/mu1_000-base_load0_000-njobs30-base_comp2_115-Canada.csv'
+fname = f'../delay_profiles/sam-gc-cnn_profile_est_desktop_long4/mu1_000-base_load0_000-njobs80-base_comp2_166-Canada.csv'
+
+'''
+
+
 df = pd.read_csv(fname, index_col=0)
-
 
 if __name__ == '__main__':
 
@@ -34,5 +54,5 @@ if __name__ == '__main__':
     for load in tqdm(df['load']):
         print(f'{load = }')
         print()
-        run(workers, invokes, load, batch, comp_type, region, sam_name, folder, dryrun=2, suffix=5)
+        run(workers, invokes, load, batch, comp_type, region, sam_name, folder, dryrun=2, suffix=1)
         
