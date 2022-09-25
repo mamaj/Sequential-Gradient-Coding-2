@@ -5,6 +5,8 @@ import pickle
 import numpy as np
 import pandas as pd
 
+DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
+
 def parse_log_duration(log):
     log = base64.b64decode(log).decode('utf-8')
     
