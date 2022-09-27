@@ -25,6 +25,9 @@ def load_profile(workers, invokes, load, batch, comp_type, region,
         with open(fpath, 'rb') as f:
             rounds += pickle.load(f)
 
+    if len(rounds) == 0:
+        raise FileNotFoundError(f'{DELAY_DIR / folder / fname}.pkl does not exist.')
+    
     if not complete_response:
         for r in rounds:
             for res in r['results']:
@@ -52,6 +55,9 @@ def slugify(value, allow_unicode=False):
     trailing whitespace, dashes, and underscores.
     """
     
+    if isinstance(value, int):
+        value = float(value)
+    
     if isinstance(value, float):
         value = f'{value: .3f}'.replace('.', '_')
     else:
@@ -76,7 +82,7 @@ def ridge_plot(x, g, bw_adjust=0.2, title=None, xlabel=None, xlim=None):
 
     # Initialize the FacetGrid object
     pal = sns.cubehelix_palette(10, rot=-.25, light=.7)
-    g = sns.FacetGrid(df, row="g", hue="g", aspect=15, height=.5, palette=pal)
+    g = sns.FacetGrid(df, row="g", hue="g", aspect=10, height=1, palette=pal)
 
     # Draw the densities in a few steps
     g.map(sns.kdeplot, "x",
