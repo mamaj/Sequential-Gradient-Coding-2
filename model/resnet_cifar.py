@@ -61,6 +61,7 @@ if __name__ == '__main__':
             train_acc.append(acc.item())
             i += 1
         
+        model.eval()
         with torch.no_grad():
             _test_loss, _test_acc = 0., 0.
             for x, y in test_loader:
