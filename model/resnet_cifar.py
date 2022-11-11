@@ -37,7 +37,7 @@ if __name__ == '__main__':
     model.fc = nn.Linear(512, 100)
     model.to(DEVICE) 
 
-    optim = torch.optim.Adam(lr=1e-4, params=model.parameters())
+    optim = torch.optim.Adam(lr=1e-5, params=model.parameters())
 
     train_loss, train_acc = [], []
     test_loss, test_acc = [], []
@@ -61,15 +61,16 @@ if __name__ == '__main__':
             train_acc.append(acc.item())
             i += 1
         
-        _test_loss, _test_acc = 0., 0.
-        for x, y in test_loader:
-            x, y = x.to(DEVICE), y.to(DEVICE)
+        with torch.no_grad():
+            _test_loss, _test_acc = 0., 0.
+            for x, y in test_loader:
+                x, y = x.to(DEVICE), y.to(DEVICE)
 
-            y_logit = model(x)
-            _test_loss += F.cross_entropy(y_logit, y, reduction='sum')
-            _test_acc += (y_logit.argmax(dim=1) == y).float().sum()
-        test_acc.append(_test_acc / len(test_ds))
-        test_loss.append(_test_loss / len(test_ds))
+                y_logit = model(x)
+                _test_loss += F.cross_entropy(y_logit, y, reduction='sum')
+                _test_acc += (y_logit.argmax(dim=1) == y).float().sum()
+            test_acc.append(_test_acc.item() / len(test_ds))
+            test_loss.append(_test_loss.item() / len(test_ds))
             
             
 
@@ -77,6 +78,11 @@ if __name__ == '__main__':
     plt.plot(train_loss)
     plt.figure()
     plt.plot(train_acc)
+    plt.figure()
+    plt.plot(test_loss)
+    plt.figure()
+    plt.plot(test_acc)
+    
     plt.grid()
     
     # with open('/Users/reza/Projects/Sequential-Gradient-Coding/2_find_runtimes/train_acc.pkl', 'wb') as f:
