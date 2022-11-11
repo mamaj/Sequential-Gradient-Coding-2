@@ -14,7 +14,7 @@ def create_package(
     runs_dir='runs/' ,
     efs_zip_name='efs.zip',
     dataset_name='CIFAR10',
-    num_classes=10,
+    # num_classes=10,
     use_docker=True,
 ):
     
@@ -39,6 +39,19 @@ def create_package(
     import torch.nn as nn
     import torchvision
 
+    # datasets
+    (package_dir / dataset_dir).mkdir(exist_ok=True)
+    dataset = torchvision.datasets.__getattribute__(dataset_name)(
+        root=package_dir / dataset_dir,
+        train=True,
+        download=True,
+    )
+    for p in (package_dir / dataset_dir).glob('*.tar.gz'):
+        p.unlink()
+    
+    num_classes = len(dataset.classes)
+    
+    
     # models
     (package_dir / model_path).parent.mkdir(exist_ok=True)
     
@@ -58,16 +71,6 @@ def create_package(
         m = torchvision.models.resnet18(num_classes=num_classes)
         
     torch.save(m, package_dir / model_path)
-
-    # datasets
-    (package_dir / dataset_dir).mkdir(exist_ok=True)
-    dataset = torchvision.datasets.__getattribute__(dataset_name)(
-        root=package_dir / dataset_dir,
-        train=True,
-        download=True,
-    )
-    for p in (package_dir / dataset_dir).glob('*.tar.gz'):
-        p.unlink()
 
     # runs
     Path(package_dir / runs_dir).mkdir(exist_ok=True)
@@ -95,7 +98,7 @@ if __name__ == '__main__':
     parser.add_argument('--runs-dir', type=str, required=True)
     parser.add_argument('--efs-zip-name', type=str, required=False)
     parser.add_argument('--dataset-name', type=str, required=True)
-    parser.add_argument('--num-classes', type=int, required=True)
+    # parser.add_argument('--num-classes', type=int, required=True)
     parser.add_argument('--use-docker', action='store_true', default=False)
 
     args = parser.parse_args()
