@@ -8,6 +8,7 @@ from pathlib import Path
 from pprint import pprint
 
 import boto3
+from botocore.client import Config
 import numpy as np
 from tqdm import tqdm, trange
 
@@ -25,6 +26,8 @@ REGIONS = {
     "London": "eu-west-2",
 }
 DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
+
+config = Config(read_timeout=60*10)
 
 def run(workers, invokes, load, batch, comp_type, region_name, sam_name, folder, dryrun=False, suffix=None):
     """ Returns list of round dicts:
@@ -119,7 +122,7 @@ def task_process(worker_ids, region, event):
 
 def task(worker_id, region, event):    
     session = boto3.session.Session()
-    client = session.client('lambda', region_name=region['code'])    
+    client = session.client('lambda', region_name=region['code'], config=config)    
     
     started = time.perf_counter()
     response = invoke_lambda(client, region['arn'], 
