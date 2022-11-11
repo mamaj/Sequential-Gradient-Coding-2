@@ -25,7 +25,7 @@ class GradientCoding:
         # state of the master: (worker, minitask, round)
         self.state = np.full((n, self.total_rounds), np.nan) 
         self.durations = np.full((self.total_rounds, ), -1.)
-    
+        self.num_waits = 0
     
     @classmethod
     def normalized_load(cls, n, s):
@@ -44,6 +44,7 @@ class GradientCoding:
 
     
     def run(self) -> None:
+        self.num_waits = 0
         for round_ in range(self.total_rounds):
             # perform round
             self.perform_round(round_)
@@ -68,6 +69,7 @@ class GradientCoding:
             round_duration = np.minimum(wait_time, delay.max())
         else:
             # wait for all: do not apply stragglers
+            self.num_waits += 1
             round_duration = delay.max()
             
         # set round_result into state

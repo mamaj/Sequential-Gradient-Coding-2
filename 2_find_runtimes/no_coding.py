@@ -24,7 +24,8 @@ class NoCoding:
         # state of the master: (worker, minitask, round)
         self.state = np.full((n, self.total_rounds), np.nan) 
         self.durations = np.full((self.total_rounds, ), -1.)
-    
+        self.num_waits = 0
+
     
     @classmethod
     def normalized_load(cls, n):
@@ -42,6 +43,7 @@ class NoCoding:
 
     
     def run(self) -> None:
+        self.num_waits = 0
         for round_ in range(self.total_rounds):
             # perform round
             self.perform_round(round_)
@@ -58,6 +60,7 @@ class NoCoding:
         # wait for all the workers
         delay = self.delays[:, round_]
         round_duration = delay.max()
+        self.num_waits += 1
             
         # set round_result into state
         self.state[:, round_] = round_result

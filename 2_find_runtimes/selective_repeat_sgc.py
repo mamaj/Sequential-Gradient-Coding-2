@@ -29,7 +29,8 @@ class SelectiveRepeatSGC:
         # state of the master: (workers, round)
         self.state = np.full((n , self.total_rounds), np.nan)    
         self.durations = np.full((self.total_rounds, ), -1.)
-    
+        self.num_waits = 0
+
     
     @classmethod
     def normalized_load(cls, n, *args):
@@ -44,10 +45,11 @@ class SelectiveRepeatSGC:
     
 
     @classmethod
-    def param_combinations(cls, n, rounds, max_delay):
+    def param_combinations(cls, n, rounds, max_delay, max_W=None):
+        max_W = max_W or rounds
         for lambd in range(1, n+1):
             for B in range(1, max_delay+1):
-                for W in range(B+1, rounds+1, B):  # W = x * B + 1
+                for W in range(B+1, max_W+1, B):  # W = x * B + 1
                     yield B, W, lambd
 
     @classmethod
@@ -56,6 +58,7 @@ class SelectiveRepeatSGC:
 
     
     def run(self) -> None:
+        self.num_waits = 0
         for round_ in range(self.total_rounds):
             # perform round
             self.perform_round(round_)
@@ -100,6 +103,7 @@ class SelectiveRepeatSGC:
                 round_duration = np.minimum(wait_time, delay.max())
             else:
                 # wait for all: do not apply stragglers
+                self.num_waits += 1
                 round_duration = delay.max()
 
         # set round_result into state

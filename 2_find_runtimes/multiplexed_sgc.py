@@ -30,7 +30,8 @@ class MultiplexedSGC:
         # state of the master: (worker, minitask, round)
         self.state = np.full((n, self.minitasks, self.total_rounds), np.nan) 
         self.durations = np.full((self.total_rounds, ), -1.)
-                
+        self.num_waits = 0
+ 
         # constants
         self.D1_TOKEN = 0
         self.D2_TOKENS = np.arange(B) + 1 # B tokens, one for each D2 group
@@ -45,9 +46,10 @@ class MultiplexedSGC:
         
 
     @classmethod
-    def param_combinations(cls, n, rounds, max_delay):
+    def param_combinations(cls, n, rounds, max_delay, max_W=None):
+        max_W = max_W or rounds
         for lambd in range(1, n+1):
-            for W in range(2, rounds):
+            for W in range(2, max_W):
                 for B in range(1, W):
                     if max_delay >= W - 1 + B:
                         yield B, W, lambd
@@ -58,6 +60,7 @@ class MultiplexedSGC:
     
     
     def run(self) -> None:
+        self.num_waits = 0
         for round_ in range(self.total_rounds):
             # perform round
             self.perform_round(round_)
@@ -101,6 +104,7 @@ class MultiplexedSGC:
             round_duration = np.minimum(wait_time, delay.max())
         else:
             # wait for all: do not apply stragglers
+            self.num_waits += 1
             round_duration = delay.max()
             
         # set round_result into state

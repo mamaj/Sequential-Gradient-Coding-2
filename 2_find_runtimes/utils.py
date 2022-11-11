@@ -15,18 +15,20 @@ DELAY_DIR = Path(__file__).parents[1] / 'delay_profiles'
 def load_profile(workers, invokes, load, batch, comp_type, region,
                      folder, complete_response=False, suffix=None):
     
-    suffix = '_' + str(suffix) if suffix else ''
+    suffix = '-' + str(suffix) if suffix else ''
     
     folder = Path(folder)
-    fname = f"w{workers}-n{invokes}-l{slugify(load)}-b{batch}-c{slugify(comp_type)}-{region}{suffix}"
+    fname = f"w{workers}-n{invokes}-l{slugify(load)}-b{batch}-c{slugify(comp_type)}-{region}{suffix}.pkl"
     
-    rounds = []
-    for fpath in (DELAY_DIR / folder).glob(fname+'*'):
-        with open(fpath, 'rb') as f:
-            rounds += pickle.load(f)
+    # rounds = []
+    # for fpath in (DELAY_DIR / folder).glob(fname+'*'):
+    
+    fpath = (DELAY_DIR / folder/fname)
+    with open(fpath, 'rb') as f:
+        rounds = pickle.load(f)
 
-    if len(rounds) == 0:
-        raise FileNotFoundError(f'{DELAY_DIR / folder / fname}.pkl does not exist.')
+    # if len(rounds) == 0:
+        # raise FileNotFoundError(f'{DELAY_DIR / folder / fname}.pkl does not exist.')
     
     if not complete_response:
         for r in rounds:
@@ -166,7 +168,12 @@ def folder_params(folder):
     return workers, invokes, load, batch, comp_type, regions
         
         
-        
+def cdf(x, bins=None):
+    if bins is None:
+        bins = np.arange(0, 5, 0.01)
+    hist, _ = np.histogram(x, bins)
+    cdf = hist.cumsum() / x.size
+    return cdf 
         
         
         

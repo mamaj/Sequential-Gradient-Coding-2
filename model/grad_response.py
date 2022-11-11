@@ -33,7 +33,8 @@ print(f'simple cnn: {num_params=:,}, size (float16) = {num_params * 16 / 8:,} B'
 #%% load a model:
 
 # model = torchvision.models.vgg16(num_classes=10, pretrained=False)
-model = torchvision.models.resnet18(num_classes=10)
+# model = torchvision.models.resnet18(num_classes=10)
+model = CnnModel()
 
 # load a dataset
 transform = torchvision.transforms.ToTensor()
