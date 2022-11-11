@@ -33,8 +33,7 @@ if __name__ == '__main__':
     train_loader = torch.utils.data.DataLoader(train_ds, batch_size=512, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_ds, batch_size=512, shuffle=True)
 
-    model = torchvision.models.resnet18()
-    model.fc = nn.Linear(512, 100)
+    model = torchvision.models.resnet18(num_classes=100)
     model.to(DEVICE) 
 
     optim = torch.optim.Adam(lr=1e-4, params=model.parameters())
@@ -44,6 +43,7 @@ if __name__ == '__main__':
     
     i = 0
     for epoch in trange(20):
+        model.train()
         for x, y in tqdm(train_loader):
             
             x, y = x.to(DEVICE), y.to(DEVICE)
@@ -61,6 +61,7 @@ if __name__ == '__main__':
             train_acc.append(acc.item())
             i += 1
         
+        model.eval()
         _test_loss, _test_acc = 0., 0.
         for x, y in test_loader:
             x, y = x.to(DEVICE), y.to(DEVICE)
