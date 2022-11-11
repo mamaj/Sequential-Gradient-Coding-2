@@ -2,18 +2,18 @@ import pickle
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
 import torchvision
-import numpy as np
-import matplotlib.pyplot as plt
-from tqdm import tqdm, trange
+from torch.utils.data import DataLoader, Dataset
+from tqdm.notebook import tqdm, trange
 
 DATAPATH = Path.home() / '.datasets'
 
-    
+DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     
 if __name__ == '__main__':
     
@@ -27,15 +27,18 @@ if __name__ == '__main__':
 
     model = torchvision.models.resnet18()
     model.fc = nn.Linear(512, 100)
+    model.to(DEVICE) 
 
     optim = torch.optim.Adam(lr=1e-4, params=model.parameters())
 
     loss_list = []
     acc_list = []
     i = 0
-    for epoch in trange(50):
+    for epoch in trange(20):
         for x, y in tqdm(loader):
-
+            
+            x, y = x.to(DEVICE), y.to(DEVICE)
+            
             y_logit = model(x)
             loss = F.cross_entropy(y_logit, y)
 
