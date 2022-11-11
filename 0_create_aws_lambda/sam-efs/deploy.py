@@ -32,20 +32,17 @@ session = boto3.Session(region_name=REGION)
 # SAM_APP_NAME = 'sam-gc-vgg16'
 # DATASET_NAME = 'CIFAR10'
 # MODEL_PATH = 'models/vgg16.pt'
-# NUM_CLASSES = 10
 # GRAD_COMMUNICATION = 'EFS'
 
-# SAM_APP_NAME = 'sam-gc-resnet18'
-# DATASET_NAME = 'CIFAR10'
-# MODEL_PATH = 'models/resnet18.pt'
-# NUM_CLASSES = 10
-# GRAD_COMMUNICATION = 'EFS'
+SAM_APP_NAME = 'sam-gc-resnet18'
+DATASET_NAME = 'CIFAR100'
+MODEL_PATH = 'models/resnet18.pt'
+GRAD_COMMUNICATION = 'EFS'
 
-SAM_APP_NAME = 'sam-gc-cnn'
-DATASET_NAME = 'MNIST'
-MODEL_PATH = 'models/cnn.pt'
-NUM_CLASSES = 10
-GRAD_COMMUNICATION = 'Payload'
+# SAM_APP_NAME = 'sam-gc-cnn'
+# DATASET_NAME = 'MNIST'
+# MODEL_PATH = 'models/cnn.pt'
+# GRAD_COMMUNICATION = 'Payload'
 
 
 PYTHON_VERSION = '3.8'
@@ -186,7 +183,8 @@ if POPULATE_EFS:
             + f' --runs-dir {RUNS_DIR}'
             + f' --efs-zip-name {"na"}'
             + f' --dataset-name {DATASET_NAME}'
-            + f' --num-classes {NUM_CLASSES}')
+            # + f' --num-classes {NUM_CLASSES}'
+        )
     ])
 
     print('Deployment Completed ;) ')
